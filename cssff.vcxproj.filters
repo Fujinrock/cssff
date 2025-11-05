@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Main.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Settings.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Weapons.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Common.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Frag.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Errors.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="DemoFile.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="DemoParser.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="bitbuf.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="GameEvents.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Netmessages.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="StringTables.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="DataTables.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Entities.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Common.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Weapons.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Frag.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Errors.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="DemoFile.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="DemoParser.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="bitbuf.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="GameEvents.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Netmessages.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="StringTables.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="DataTables.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Entities.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="PropDecode.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
