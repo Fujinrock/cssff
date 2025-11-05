@@ -148,7 +148,7 @@ angle_info_t *Player::GetAnglesByTick( int tick )
 	}
 
 	// Add new angles
-	viewangles.emplace_front( angle_info_t( tick ) );
+	viewangles.emplace_front( tick );
 
 	return &viewangles.front();
 }
@@ -433,5 +433,6 @@ void DemoParser::DoPlayersPostCheck()
 		}
 	}
 }
+
 
 // =====================================================================================================================================================================
