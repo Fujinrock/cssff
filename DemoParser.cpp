@@ -152,6 +152,7 @@ bool DemoParser::Parse( void )
 				bf_read forkedReader( data, datasize );
 
 				ParseDataTables( forkedReader );
+				delete[] data;
 				break;
 			}
 
@@ -340,5 +341,6 @@ void DemoParser::OnParsingEnd( void )
 		}
 	}
 }
+
 
 // ==================================================================================================================
