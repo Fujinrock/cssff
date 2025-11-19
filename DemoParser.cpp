@@ -37,6 +37,7 @@ DemoParser::DemoParser( DemoFile *pDemo )
 	m_iServerClassBits = 0;
 	m_iNumStringTables = 0;
 
+	memset( &m_PropIndices, 0, sizeof( m_PropIndices ) );
 	memset( &m_StringTables, 0, sizeof( m_StringTables ) );
 
 	// Only one parser should exist at any given time, so make this the global parser
@@ -341,6 +342,5 @@ void DemoParser::OnParsingEnd( void )
 		}
 	}
 }
-
 
 // ==================================================================================================================

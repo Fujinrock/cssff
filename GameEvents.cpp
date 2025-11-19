@@ -301,7 +301,7 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		{
 			prop = pPOVPlayerEntity->FindProp( "m_iObserverMode" );
 
-			int observer_mode = prop? prop->m_pPropValue->m_value.m_int : OBS_MODE_IN_EYE; // assume in-eye if prop not found
+			int observer_mode = prop? prop->m_pPropValue->m_value.m_int : OBS_MODE_IN_EYE; // Assume in-eye if prop not found
 
 			prop = pPOVPlayerEntity->FindProp( "m_hObserverTarget" );
 
@@ -375,7 +375,7 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 			for( size_t i = 0; i < m_PlayerPostCheckData.size(); ++i )
 			{
 				if( m_PlayerPostCheckData[ i ].pPlayer == pAttacker
-					&& m_PlayerPostCheckData[ i ].nKillTick == m_iCurrentTick )
+				&& m_PlayerPostCheckData[ i ].nKillTick == m_iCurrentTick )
 				{
 					bAlreadyIn = true;
 					break;

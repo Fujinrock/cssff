@@ -11,7 +11,7 @@ void DemoParser::ParseDataTables( bf_read &reader )
 		reader.ReadString( table.m_tableName, sizeof(table.m_tableName) );
 		table.m_nProps = reader.ReadUBitLong( 9 );
 
-		for(int i = 0; i < table.m_nProps; ++i)
+		for( int i = 0; i < table.m_nProps; ++i )
 		{
 			SendProp prop;
 			prop.m_propType = (SendPropType)reader.ReadUBitLong( 5 );
@@ -57,6 +57,8 @@ void DemoParser::ParseDataTables( bf_read &reader )
 	if( !nServerClasses )
 		throw ParsingError_t( "no server classes in ParseDataTable" );
 
+	int nCCSPlayerID = -1;
+
 	for ( int i = 0; i < nServerClasses; i++ )
 	{
 		ServerClass_t entry;
@@ -68,6 +70,12 @@ void DemoParser::ParseDataTables( bf_read &reader )
 
 		reader.ReadString( entry.strName, sizeof( entry.strName ) );
 		reader.ReadString( entry.strDTName, sizeof( entry.strDTName ) );
+
+		// Keep track of CCSPlayer ID for later
+		if( nCCSPlayerID == -1 && !strcmp( entry.strName, "CCSPlayer" ) )
+		{
+			nCCSPlayerID = entry.nClassID;
+		}
 
 		// Find the data table by name
 		entry.nDataTable = -1;
@@ -86,10 +94,16 @@ void DemoParser::ParseDataTables( bf_read &reader )
 		m_ServerClasses.push_back( entry );
 	}
 
+	if( nCCSPlayerID == -1 )
+		throw ParsingError_t( "CCSPlayer server class not found" );
+
 	for ( int i = 0; i < nServerClasses; ++i )
 	{
 		FlattenDataTable( i );
 	}
+
+	// Save the indices for the CCSPlayer props that we're going to be using a lot
+	SavePlayerPropIndices( nCCSPlayerID );
 
 	// Perform integer log2() to set server class bits
 	int nTemp = nServerClasses;
@@ -99,6 +113,8 @@ void DemoParser::ParseDataTables( bf_read &reader )
 
 	m_iServerClassBits++;
 }
+
+// =====================================================================================================================================================================
 
 SendTable *DemoParser::GetTableByName( const char *pName )
 {
@@ -112,6 +128,8 @@ SendTable *DemoParser::GetTableByName( const char *pName )
 	return nullptr;
 }
 
+// =====================================================================================================================================================================
+
 SendTable *DemoParser::GetTableByClassID( uint32 iClassID )
 {
 	for ( size_t i = 0; i < m_ServerClasses.size(); i++ )
@@ -123,6 +141,8 @@ SendTable *DemoParser::GetTableByClassID( uint32 iClassID )
 	}
 	return nullptr;
 }
+
+// =====================================================================================================================================================================
 
 void DemoParser::GatherExcludes( SendTable *pTable )
 {
@@ -145,6 +165,8 @@ void DemoParser::GatherExcludes( SendTable *pTable )
 	}
 }
 
+// =====================================================================================================================================================================
+
 bool DemoParser::IsPropExcluded( SendTable *pTable, const SendProp& checkSendProp )
 {
 	for ( size_t i = 0; i < m_currentExcludes.size(); ++i )
@@ -157,6 +179,8 @@ bool DemoParser::IsPropExcluded( SendTable *pTable, const SendProp& checkSendPro
 	}
 	return false;
 }
+
+// =====================================================================================================================================================================
 
 void DemoParser::GatherProps_IterateProps( SendTable *pTable, int nServerClass, std::vector< FlattenedPropEntry > &flattenedProps )
 {
@@ -200,6 +224,8 @@ void DemoParser::GatherProps_IterateProps( SendTable *pTable, int nServerClass, 
 	}
 }
 
+// =====================================================================================================================================================================
+
 void DemoParser::GatherProps( SendTable *pTable, int nServerClass )
 {
 	std::vector< FlattenedPropEntry > tempFlattenedProps;
@@ -211,6 +237,8 @@ void DemoParser::GatherProps( SendTable *pTable, int nServerClass )
 		flattenedProps.push_back( tempFlattenedProps[ i ] );
 	}
 }
+
+// =====================================================================================================================================================================
 
 void DemoParser::FlattenDataTable( int nServerClass )
 {
@@ -227,13 +255,58 @@ void DemoParser::FlattenDataTable( int nServerClass )
 
 	for ( size_t i = 0; i < flattenedProps.size(); ++i )
 	{
-		FlattenedPropEntry p = flattenedProps[i];
+		FlattenedPropEntry p = flattenedProps[ i ];
 
 		if ( (p.m_prop->m_flags & SPROP_CHANGES_OFTEN) != 0 )
 		{
-			flattenedProps[i] = flattenedProps[start];
-			flattenedProps[start] = p;
+			flattenedProps[ i ] = flattenedProps[ start ];
+			flattenedProps[ start ] = p;
 			++start;
 		}
 	}
 }
+
+// =====================================================================================================================================================================
+
+void DemoParser::SavePlayerPropIndices( int nCCSPlayerID )
+{
+	std::vector< FlattenedPropEntry > &flattenedProps = m_ServerClasses[ nCCSPlayerID ].flattenedProps;
+
+	for( size_t i = 0; i < flattenedProps.size(); ++i )
+	{
+		if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_angEyeAngles[0]" ) )
+		{
+			m_PropIndices.uPitchAnglePropIndex = i;
+		}
+		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_angEyeAngles[1]" ) )
+		{
+			m_PropIndices.uYawAnglePropIndex = i;
+		}
+		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_flFlashDuration" ) )
+		{
+			m_PropIndices.uFlashDurationPropIndex = i;
+		}
+		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_fFlags" ) )
+		{
+			m_PropIndices.uFlagsPropIndex = i;
+		}
+		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_vecOrigin" ) )
+		{
+			if( m_PropIndices.uOriginPropsFound < 2 )
+				m_PropIndices.uOriginPropIndex[ m_PropIndices.uOriginPropsFound ] = i;
+
+			++m_PropIndices.uOriginPropsFound;
+		}
+	}
+
+	if( !m_PropIndices.uPitchAnglePropIndex
+	|| !m_PropIndices.uYawAnglePropIndex
+	|| !m_PropIndices.uFlashDurationPropIndex
+	|| !m_PropIndices.uFlagsPropIndex
+	|| m_PropIndices.uOriginPropsFound != 2 )
+	{
+		throw ParsingError_t( "CCSPlayer props not found" );
+	}
+}
+
+// =====================================================================================================================================================================

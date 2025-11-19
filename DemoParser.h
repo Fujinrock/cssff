@@ -82,11 +82,24 @@ private:
 	void GatherProps_IterateProps( SendTable *pTable, int nServerClass, std::vector< FlattenedPropEntry > &flattenedProps );
 	bool IsPropExcluded( SendTable *pTable, const SendProp &checkSendProp );
 	void FlattenDataTable( int nServerClass );
+	void SavePlayerPropIndices( int nCCSPlayerID );
 
 	int					m_iServerClassBits;				///< # of bits used to encode server class IDs
 	ServerClassVector	m_ServerClasses;
 	SendTableVector		m_DataTables;
 	ExcludeEntryVector	m_currentExcludes;
+
+	// Prop indices for the heavily used CCSPlayer props
+	struct PlayerPropIndices
+	{
+		uint32				uPitchAnglePropIndex;
+		uint32				uYawAnglePropIndex;
+		uint32				uFlashDurationPropIndex;
+		uint32				uFlagsPropIndex;
+		uint32				uOriginPropIndex[ 2 ];		///< There should be 2 of these
+		uint32				uOriginPropsFound;
+	}
+	m_PropIndices;
 
 
 	// ===== Entities ==============================================================================================

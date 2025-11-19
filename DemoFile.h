@@ -7,15 +7,15 @@
  */
 enum
 {
-	dem_signon	= 1,						// A startup message, process as fast as possible
-	dem_packet,								// A normal network packet that we stored off
-	dem_synctick,							// Sync client clock to demo tick
-	dem_consolecmd,							// Console command
-	dem_usercmd,							// User input command
-	dem_datatables,							// Network data tables
-	dem_stop,								// End of demo
-	dem_firstcmd = dem_signon,				// First command
-	dem_lastcmd = dem_stop,					// Last command
+	dem_signon	= 1,						///< A startup message, process as fast as possible
+	dem_packet,								///< A normal network packet that we stored off
+	dem_synctick,							///< Sync client clock to demo tick
+	dem_consolecmd,							///< Console command
+	dem_usercmd,							///< User input command
+	dem_datatables,							///< Network data tables
+	dem_stop,								///< End of demo
+	dem_firstcmd = dem_signon,				///< First command
+	dem_lastcmd = dem_stop,					///< Last command
 };
 
 /**
@@ -23,17 +23,17 @@ enum
  */
 struct demoheader_t
 {
-	char	demofilestamp[ 8 ];				// Should be HL2DEMO
-	int32	demoprotocol;					// Should be 3
-	int32	networkprotocol;				// Should be 7 (for v34)
-	char	servername[ MAX_PATH ];			// Name of server
-	char	clientname[ MAX_PATH ];			// Name of client who recorded the game
-	char	mapname[ MAX_PATH ];			// Name of map
-	char	gamedirectory[ MAX_PATH ];		// Name of game directory (com_gamedir)
-	float	playback_time;					// Time of track
-	int32   playback_ticks;					// # of ticks in track
-	int32   playback_frames;				// # of frames in track
-	int32	signonlength;					// Length of sigondata in bytes
+	char	demofilestamp[ 8 ];				///< Should be HL2DEMO
+	int32	demoprotocol;					///< Should be 3
+	int32	networkprotocol;				///< Should be 7 (for v34)
+	char	servername[ MAX_PATH ];			///< Name of server
+	char	clientname[ MAX_PATH ];			///< Name of client who recorded the game
+	char	mapname[ MAX_PATH ];			///< Name of map
+	char	gamedirectory[ MAX_PATH ];		///< Name of game directory (com_gamedir)
+	float	playback_time;					///< Time of track
+	int32   playback_ticks;					///< # of ticks in track
+	int32   playback_frames;				///< # of frames in track
+	int32	signonlength;					///< Length of sigondata in bytes
 };
 
 /**

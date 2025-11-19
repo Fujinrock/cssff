@@ -218,7 +218,7 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 		fFlickshotAbsoluteMaxMinAngle = 110.f;
 		fFlickBaseAngle = 90.f;
 
-		iLog2Multiplier = 6;
+		iLog2Multiplier = 7;
 
 		// Use shorter flick length on pitch axis
 		iMaxFlickTicks = (int)ceil( iMaxFlickTicks * 0.65 );
@@ -230,11 +230,11 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 		fFlickBaseAngle = 180.f;
 
 		// Distance scaling
-		iLog2Multiplier = 17;
+		iLog2Multiplier = 19;
 	}
 
 	// Distance scaling of min angle
-	fMinFlickAngle = fFlickBaseAngle - (float)Log2( fDistance/10.f ) * iLog2Multiplier;
+	fMinFlickAngle = fFlickBaseAngle - (float)Log2( fDistance/7.5f ) * iLog2Multiplier;
 
 	// Clamp min angle
 	if( fMinFlickAngle < fFlickshotAbsoluteMinAngle )
@@ -433,6 +433,5 @@ void DemoParser::DoPlayersPostCheck()
 		}
 	}
 }
-
 
 // =====================================================================================================================================================================

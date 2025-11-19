@@ -247,8 +247,6 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 {
 	int index = -1;
 
-	SendTable *pTable = GetTableByClassID( pEntity->m_uClass );
-
 	while( reader.ReadOneBit() )
 	{
 		index += reader.ReadUBitVar() + 1;
@@ -259,8 +257,9 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 			Prop_t *pProp = DecodeProp( reader, pSendProp, pEntity->m_uClass, index );
 			pEntity->AddOrUpdateProp( pSendProp, pProp );
 
-			// TODO: save the index for these props when server classes are added for faster checking
-			if( !strcmp( pSendProp->m_prop->m_propName, "m_angEyeAngles[0]" ) ) // Pitch
+			// Only player entities are read, so we know the prop applies to a player
+
+			if( index == m_PropIndices.uPitchAnglePropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
@@ -268,7 +267,7 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 
 				pPlayer->AddPitchAngle( pProp->m_value.m_float );
 			}
-			else if( !strcmp( pSendProp->m_prop->m_propName, "m_angEyeAngles[1]" ) ) // Yaw
+			else if( index == m_PropIndices.uYawAnglePropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
@@ -276,7 +275,7 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 
 				pPlayer->AddYawAngle( pProp->m_value.m_float );
 			}
-			else if( !strcmp( pSendProp->m_prop->m_propName, "m_flFlashDuration" ) )
+			else if( index == m_PropIndices.uFlashDurationPropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
@@ -285,7 +284,7 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 				pPlayer->flashinfo.tick = m_iCurrentTick;
 				pPlayer->flashinfo.time = pProp->m_value.m_float;
 			}
-			else if( !strcmp( pSendProp->m_prop->m_propName, "m_fFlags" ) )
+			else if( index == m_PropIndices.uFlagsPropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
@@ -301,14 +300,14 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 					pPlayer->airstatus = PL_ON_GROUND;
 				}
 			}
-			else if( !strcmp( pSendProp->m_prop->m_propName, "m_vecOrigin" ) )
+			else if( index == m_PropIndices.uOriginPropIndex[0] || index == m_PropIndices.uOriginPropIndex[1] )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
 				assert( pPlayer );
 
 				if( pPlayer->airstatus == PL_IN_AIR_STARTED
-					&& pProp->m_value.m_vector.z > (pPlayer->lastZ + (m_bIsPOV ? 2.5f : 7.5f) ))
+				&& pProp->m_value.m_vector.z > (pPlayer->lastZ + 1.f) )
 					pPlayer->airstatus = PL_WENT_UP_IN_AIR;
 
 				pPlayer->lastZ = pProp->m_value.m_vector.z;
