@@ -186,23 +186,25 @@ void SettingsManager::LoadSettings( const char *szSettingsFile )
 	if( m_bSettingsLoaded )
 		return;
 
-	std::string sDefaultConfigPath;
+	string sConfigPath;
 
 	// Use default file if no file was specified
 	if( !szSettingsFile )
 	{
-		sDefaultConfigPath = g_ProgramDirectory + DEFAULT_SETTINGS_FILE;
-		szSettingsFile = sDefaultConfigPath.c_str();
+		sConfigPath = g_ProgramDirectory + DEFAULT_SETTINGS_FILE;
+	}
+	else
+	{
+		sConfigPath = szSettingsFile;
 	}
 
-	ifstream file( szSettingsFile );
+	ifstream file( sConfigPath );
 
 	if( !file.is_open() )
 	{
-		string filename = szSettingsFile;
-		RemoveFileNameFolders( filename );
+		RemoveFileNameFolders( sConfigPath );
 
-		printf( "Warning: Could not open settings file \"%s\" - using built-in default values!\n", filename.c_str() );
+		printf( "Warning: Could not open settings file \"%s\" - using built-in default values!\n", sConfigPath.c_str() );
 
 		return;
 	}

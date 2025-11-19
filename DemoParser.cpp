@@ -8,6 +8,7 @@
 DemoParser *gpParser = nullptr;
 
 extern std::string g_ProgramDirectory;
+extern std::string g_BatchDirectory;
 extern std::string g_BatchOutput;
 extern std::vector< ParsingWarning_t > g_WarningDemos;
 
@@ -284,8 +285,9 @@ void DemoParser::OnParsingEnd( void )
 
 		std::ofstream file_output;
 		std::string filename;
+		const bool bDumpToFile = Settings()->DumpToFileEnabled() && !Settings()->BatchProcessingEnabled();
 
-		if( Settings()->DumpToFileEnabled() && !Settings()->BatchProcessingEnabled() )
+		if( bDumpToFile )
 		{
 			filename = m_pDemo->GetFileName();
 			RemoveFileExtension( filename );
@@ -293,7 +295,7 @@ void DemoParser::OnParsingEnd( void )
 
 			if( Settings()->WriteOutputToDemoDirectory() )
 			{
-				file_output.open( filename );
+				file_output.open( g_BatchDirectory + filename );
 			}
 			else
 			{
@@ -322,12 +324,18 @@ void DemoParser::OnParsingEnd( void )
 			}
 		}
 
-		if( Settings()->DumpToFileEnabled() && !Settings()->BatchProcessingEnabled() && file_output.is_open() )
+		if( bDumpToFile )
 		{
-			if( !Settings()->BatchProcessingEnabled() )
-				printf( "Output has been written to file %s in %s folder\n\n", filename.c_str(), Settings()->WriteOutputToDemoDirectory()? "demo's" : "program" );
+			if( file_output.is_open() )
+			{
+				printf( "Output has been written to file %s in %s folder\n\n", filename.c_str(), Settings()->WriteOutputToDemoDirectory() ? "demo's" : "program" );
 
-			file_output.close();
+				file_output.close();
+			}
+			else
+			{
+				printf( "Failed to write output to file\n\n" );
+			}
 		}
 	}
 	else

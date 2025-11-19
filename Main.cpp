@@ -4,7 +4,6 @@
 #include "Errors.h"
 #include "Settings.h"
 #include <Windows.h>
-#include <direct.h>
 #include <stdio.h>
 #include <vector>
 #include <ctime>
@@ -263,12 +262,15 @@ int main( int argc, char *argv[] )
 	// Get program executable directory (suffixed with '\')
 	g_ProgramDirectory = argv[0];
 	size_t pos = g_ProgramDirectory.find_last_of( '\\' );
-	if( pos == std::string::npos )
+	if( pos != std::string::npos )
 	{
-		printf( "%s: Invalid executable directory", CSSFF_NAME );
-		return 1;
+		g_ProgramDirectory = g_ProgramDirectory.substr( 0, pos+1 );
 	}
-	g_ProgramDirectory = g_ProgramDirectory.substr( 0, pos+1 );
+	else
+	{
+		// Don't need '\' on an empty path
+		g_ProgramDirectory = "";
+	}
 
 	// Load program settings
 	Settings()->LoadSettings( szSettingsArg );
@@ -283,12 +285,17 @@ int main( int argc, char *argv[] )
 	{
 		if( !s_DemosToParse.empty() )
 		{
-			// If there were demo args, then batch directory is the working directory of the program
-			char szWorkingDir[ MAX_PATH ];
-			_getcwd( szWorkingDir, sizeof(szWorkingDir) );
-
-			g_BatchDirectory = szWorkingDir;
-			g_BatchDirectory += "\\";
+			// If there were demo args, batch directory is the directory of the first demo
+			const std::string &sFile = s_DemosToParse[ 0 ];
+			size_t pos = sFile.find_last_of( '\\' );
+			if( pos != std::string::npos )
+			{
+				g_BatchDirectory = sFile.substr( 0, pos + 1 );
+			}
+			else
+			{
+				g_BatchDirectory = "";
+			}
 		}
 		else
 		{

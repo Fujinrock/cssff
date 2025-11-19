@@ -2,7 +2,7 @@
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.0.5"
+#define	CSSFF_NAME					"CSSFF v2.0.6"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_PROTOCOL				3			// 3 for all versions of CS:S
