@@ -175,14 +175,12 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 				else
 				{
 					// Already connected player's information was updated
-					// Copy new information but keep old air status and Z just to be safe
+					// Copy new information but keep old air status just to be safe
 					PlayerAirStatus_e oldStatus = existing->airstatus;
-					float oldZ = existing->lastZ;
 
 					existing->CopyFrom( player );
 
 					existing->airstatus = oldStatus;
-					existing->lastZ = oldZ;
 				}
 			}
 		}

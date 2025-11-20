@@ -36,7 +36,9 @@ static const char * s_WeaponAliasInfo[] =
 
 	"hegrenade",				// 28 WEAPON_HEGRENADE
 	"flashbang",				// 29 WEAPON_FLASHBANG
-	"smokegrenade_projectile"	// 30 WEAPON_SMOKEGRENADE (Why does only this use _projectile in the end?)
+	"smokegrenade_projectile",	// 30 WEAPON_SMOKEGRENADE (Why does only this use _projectile in the end?)
+
+	nullptr
 };
 
 // This matches s_WeaponAliasInfo

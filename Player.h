@@ -89,7 +89,7 @@ private:
 	std::vector< kill_info_t > roundkills;		///< Kills done by this player on the current round
 public:
 	Player( const Player &other );				///< Copy constructor for creating new players from string table updates
-	void CopyFrom( const Player &src );			///< Copy all the fields from src that are directly read from the demo
+	void CopyFrom( const Player &src );			///< Copy all the fields from src that are set during string table updates
 
 	std::list< angle_info_t > viewangles;		///< Latest view angles of this player
 

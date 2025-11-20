@@ -104,7 +104,6 @@ CSWeaponID AliasToWeaponID( const char *alias )
 				return (CSWeaponID)i;
 	}
 
-	assert( false );
 	return WEAPON_NONE;
 }
 
@@ -122,7 +121,7 @@ const char *WeaponIDToAlias( CSWeaponID weaponID )
 	{
 		return "dualies"; // "Dual elites" seems a bit too long
 	}
-	if( weaponID == WEAPON_WORLD )
+	if( weaponID == WEAPON_WORLD || weaponID == WEAPON_NONE )
 	{
 		return "unknown weapon";
 	}
@@ -166,6 +165,8 @@ bool WeaponUsesBullets( const char *szWeaponAlias )
 		case WEAPON_SMOKEGRENADE:
 		case WEAPON_KNIFE:
 		case WEAPON_C4:
+		case WEAPON_NONE:
+		case WEAPON_WORLD:
 			return false;
 	}
 

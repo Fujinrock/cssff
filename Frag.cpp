@@ -188,8 +188,8 @@ void DemoParser::FindRoundFrags( void )
 				--k;
 				++kills_on_tick;
 
-				// Check flags from first kill in collat,
-				// because in doubles, all other kills will always have penetrated flag on
+				// Check flags from first kill, because in collats
+				// all other kills will always have "penetrated" flag on
 				kill = &p->GetKill( k );
 
 				if( kill->teamkill )
@@ -680,7 +680,7 @@ bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID 
 
 		// Allow changing a lower type frag to a higher type
 		if( (type == FRAG_5K && (existingType == FRAG_4K || existingType == FRAG_3K))
-			|| (type == FRAG_4K && existingType == FRAG_3K) )
+		|| (type == FRAG_4K && existingType == FRAG_3K) )
 		{
 			m_multiKillDescriptor.Reset();
 		}
@@ -884,10 +884,10 @@ void Frag::GetStringRepresentation( char *buffer, size_t buffer_size ) const
 
 		// Capitalize first letter if this is the first descriptor
 		if( i == first_descriptor
-			&& m_nTotalKills == implied_kills
-			&& !m_multiKillDescriptor.IsValid()
-			&& m_descriptors[ i ].count == 1
-			&& descbuffer[0] != '\0' )
+		&& m_nTotalKills == implied_kills
+		&& !m_multiKillDescriptor.IsValid()
+		&& m_descriptors[ i ].count == 1
+		&& descbuffer[0] != '\0' )
 		{
 			descbuffer[0] = toupper( descbuffer[0] );
 		}

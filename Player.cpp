@@ -29,9 +29,9 @@ void Player::CopyFrom( const Player &src )
 	for( int i = 0; i < MAX_CUSTOM_FILES; ++i )
 		customfiles[i] = src.customfiles[i];
 
+	// These need to be copied too, because the copy constructor is used when adding new players
 	entityIndex = src.entityIndex;
 	airstatus = src.airstatus;
-	lastZ = src.lastZ;
 }
 
 // =====================================================================================================================================================================
