@@ -43,9 +43,9 @@ enum
 
 EntityEntry *DemoParser::FindEntity( int nEntity )
 {
-	for ( auto i = m_Entities.begin(); i != m_Entities.end(); ++i )
+	for( auto i = m_Entities.begin(); i != m_Entities.end(); ++i )
 	{
-		if (  (*i)->m_nEntity == nEntity )
+		if( (*i)->m_nEntity == nEntity )
 		{
 			return *i;
 		}
@@ -60,7 +60,7 @@ EntityEntry *DemoParser::AddEntity( int nEntity, uint32 uClass, uint32 uSerialNu
 {
 	// If entity already exists, then replace it, else add it
 	EntityEntry *pEntity = FindEntity( nEntity );
-	if ( pEntity )
+	if( pEntity )
 	{
 		pEntity->m_uClass = uClass;
 		pEntity->m_uSerialNum = uSerialNum;
@@ -78,10 +78,10 @@ EntityEntry *DemoParser::AddEntity( int nEntity, uint32 uClass, uint32 uSerialNu
 
 void DemoParser::RemoveEntity( int nEntity )
 {
-	for ( auto i = m_Entities.begin(); i != m_Entities.end(); ++i )
+	for( auto i = m_Entities.begin(); i != m_Entities.end(); ++i )
 	{
 		EntityEntry *pEntity = *i;
-		if (  pEntity->m_nEntity == nEntity )
+		if( pEntity->m_nEntity == nEntity )
 		{
 			m_Entities.erase( i );
 			delete pEntity;
@@ -104,7 +104,7 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 
 	UpdateType updateType = PreserveEnt;
 
-	while ( updateType < Finished )
+	while( updateType < Finished )
 	{
 		--nHeaderCount;
 
@@ -124,10 +124,10 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 				return true;
 
 			// Leave PVS flag
-			if ( reader.ReadOneBit() == 0 )
+			if( reader.ReadOneBit() == 0 )
 			{
 				// Enter PVS flag
-				if ( reader.ReadOneBit() != 0 )
+				if( reader.ReadOneBit() != 0 )
 				{
 					UpdateFlags |= FHDR_ENTERPVS;
 				}
@@ -137,27 +137,27 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 				UpdateFlags |= FHDR_LEAVEPVS;
 
 				// Force delete flag
-				if ( reader.ReadOneBit() != 0 )
+				if( reader.ReadOneBit() != 0 )
 				{
 					UpdateFlags |= FHDR_DELETE;
 				}
 			}
 		}
 
-		for ( updateType = PreserveEnt; updateType == PreserveEnt; )
+		for( updateType = PreserveEnt; updateType == PreserveEnt; )
 		{
 			// Figure out what kind of an update this is
-			if ( !bIsEntity || nNewEntity > ENTITY_SENTINEL)
+			if( !bIsEntity || nNewEntity > ENTITY_SENTINEL)
 			{
 				updateType = Finished;
 			}
 			else
 			{
-				if ( UpdateFlags & FHDR_ENTERPVS )
+				if( UpdateFlags & FHDR_ENTERPVS )
 				{
 					updateType = EnterPVS;
 				}
-				else if ( UpdateFlags & FHDR_LEAVEPVS )
+				else if( UpdateFlags & FHDR_LEAVEPVS )
 				{
 					updateType = LeavePVS;
 				}
@@ -175,7 +175,7 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 					uint32 uSerialNum = reader.ReadUBitLong( NUM_NETWORKED_EHANDLE_SERIAL_NUMBER_BITS );
 
 					EntityEntry *pEntity = AddEntity( nNewEntity, uClass, uSerialNum );
-					if ( !ReadNewEntity( reader, pEntity ) )
+					if( !ReadNewEntity( reader, pEntity ) )
 					{
 						throw ParsingError_t( "error reading entity in enter PVS" );
 						return false;
@@ -185,12 +185,12 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 
 				case LeavePVS:
 				{
-					if ( !bAsDelta )  // Should never happen on a full update
+					if( !bAsDelta ) // Should never happen on a full update
 					{
 						updateType = Failed;
 						throw ParsingError_t( "leave PVS on full update" );
 					}
-					else if ( UpdateFlags & FHDR_DELETE )
+					else if( UpdateFlags & FHDR_DELETE )
 					{
 						RemoveEntity( nNewEntity );
 					}
@@ -201,9 +201,9 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 				{
 					EntityEntry *pEntity = FindEntity( nNewEntity );
 
-					if ( pEntity )
+					if( pEntity )
 					{
-						if ( !ReadNewEntity( reader, pEntity ) )
+						if( !ReadNewEntity( reader, pEntity ) )
 						{
 							throw ParsingError_t( "error reading entity in delta entity" );
 							return false;
@@ -218,12 +218,12 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 
 				case PreserveEnt:
 				{
-					if ( !bAsDelta )  // Should never happen on a full update
+					if( !bAsDelta ) // Should never happen on a full update
 					{
 						updateType = Failed;
 						throw ParsingError_t( "preserve entity on full update" );
 					}
-					else if ( nNewEntity >= MAX_EDICTS )
+					else if( nNewEntity >= MAX_EDICTS )
 					{
 						throw ParsingError_t( "new entity >= MAX_EDICTS in preserve entity" );
 					}
@@ -231,9 +231,11 @@ bool DemoParser::ProcessPacketEntities( bf_read &reader, int maxentries, int upd
 				break;
 
 				default:
+				{
 					if( updateType != Finished )
-						AddWarning( m_pDemo->GetFileName(), INVALID_ENTITY_UPDATE_TYPE);
-					break;
+						AddWarning( m_pDemo->GetFileName(), INVALID_ENTITY_UPDATE_TYPE );
+				}
+				break;
 			}
 		}
 	}
@@ -252,7 +254,7 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 		index += reader.ReadUBitVar() + 1;
 
 		FlattenedPropEntry *pSendProp = GetSendPropByIndex( pEntity->m_uClass, index );
-		if ( pSendProp )
+		if( pSendProp )
 		{
 			Prop_t *pProp = DecodeProp( reader, pSendProp, pEntity->m_uClass, index );
 			pEntity->AddOrUpdateProp( pSendProp, pProp );
@@ -326,7 +328,7 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 
 FlattenedPropEntry *DemoParser::GetSendPropByIndex( uint32 uClass, uint32 uIndex )
 {
-	if ( uIndex < m_ServerClasses[ uClass ].flattenedProps.size() )
+	if( uIndex < m_ServerClasses[ uClass ].flattenedProps.size() )
 	{
 		return &m_ServerClasses[ uClass ].flattenedProps[ uIndex ];
 	}

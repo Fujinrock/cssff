@@ -50,6 +50,12 @@ DemoParser::DemoParser( DemoFile *pDemo )
 DemoParser::~DemoParser()
 {
 	gpParser = nullptr;
+
+	const size_t num_ents = m_Entities.size();
+	for( int i = 0; i < num_ents; ++i )
+	{
+		delete m_Entities[ i ];
+	}
 }
 
 // ==================================================================================================================
