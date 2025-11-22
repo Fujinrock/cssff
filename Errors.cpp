@@ -25,8 +25,8 @@ ParsingError_t::ParsingError_t( const char *msg )
 	}
 	else
 	{
-		// If demo length is unknown, assume we're not at the end of the demo
-		at_end_of_demo = false;
+		constexpr int maxBytesLeft = 1;
+		at_end_of_demo = GetNumBytesLeft() <= maxBytesLeft;
 	}
 
 	if( !Settings()->BatchProcessingEnabled() )

@@ -2,10 +2,14 @@
 #include "Common.h"
 #include "Weapons.h"
 #include "Frag.h"
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #include <fstream>
 #include <vector>
 
 extern std::string g_ProgramDirectory;
+extern std::string g_BatchDirectory;
 
 // Keys used in reading the settings file and in finding settings per category
 //
@@ -196,12 +200,59 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_FLICKSHOT_HEADSHOT_ONLY ].m_bool = false;
 
 	m_iMaxFlickDuration = general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int;
+
+	memset( &m_fcats, 0, sizeof(m_fcats) );
+}
+
+// =====================================================================================================================================================================
+/**
+ * Builds a filepath to a singular ini file found in the directory pointed to by g_BatchDirectory
+ * @param outPath				string that will hold the built filepath
+ * @return						false if failed to find a file or there were multiple ini files, true otherwise
+ */
+bool GetSettingsFileFromBatchDirectory( std::string &outPath )
+{
+	std::string strSearchPath = g_BatchDirectory + "*.ini";
+	std::string strFilename = "";
+
+	WIN32_FIND_DATAA data;
+
+	HANDLE hFile = FindFirstFileA( strSearchPath.c_str(), &data );
+
+	if( hFile == INVALID_HANDLE_VALUE )
+	{
+		FindClose( hFile );
+		return false;
+	}
+
+	do
+	{
+		if( !( data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
+		{
+			// If there are multiple settings files in the directory, the default file will be used
+			if( !strFilename.empty() )
+			{
+				printf( "Warning: Multiple settings files found in batch directory - using default file!\n" );
+				FindClose( hFile );
+				return false;
+			}
+
+			strFilename = data.cFileName;
+		}
+	}
+	while( FindNextFileA( hFile, &data ) != 0 );
+
+	FindClose( hFile );
+
+	outPath = g_BatchDirectory + strFilename;
+
+	return true;
 }
 
 // =====================================================================================================================================================================
 
 // This is where the settings for all categories are read from the settings file
-void SettingsManager::LoadSettings( const char *szSettingsFile )
+void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSupplied )
 {
 	using namespace std;
 
@@ -210,10 +261,13 @@ void SettingsManager::LoadSettings( const char *szSettingsFile )
 
 	string sConfigPath;
 
-	// Use default file if no file was specified
 	if( !szSettingsFile )
 	{
-		sConfigPath = g_ProgramDirectory + DEFAULT_SETTINGS_FILE;
+		if( !bBatchDirSupplied || !GetSettingsFileFromBatchDirectory( sConfigPath ) )
+		{
+			// Use default file if no file or batch directory with file was specified
+			sConfigPath = g_ProgramDirectory + DEFAULT_SETTINGS_FILE;
+		}
 	}
 	else
 	{
@@ -222,13 +276,17 @@ void SettingsManager::LoadSettings( const char *szSettingsFile )
 
 	ifstream file( sConfigPath );
 
+	RemoveFileNameFolders( sConfigPath );
+
 	if( !file.is_open() )
 	{
-		RemoveFileNameFolders( sConfigPath );
-
 		printf( "Warning: Could not open settings file \"%s\" - using built-in default values!\n", sConfigPath.c_str() );
-
 		return;
+	}
+
+	if( sConfigPath != DEFAULT_SETTINGS_FILE )
+	{
+		printf( "Using settings from file \"%s\"\n", sConfigPath.c_str() );
 	}
 
 	// Allow chaining multiple categories together
@@ -632,8 +690,6 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		}
 	}
 
-	outIsStationary = bIsStationary;
-
 	// Max time key
 	float fMaxTime = 0.f;
 
@@ -699,6 +755,8 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 			}
 		}
 	}
+
+	outIsStationary = bIsStationary;
 
 	return true;
 }

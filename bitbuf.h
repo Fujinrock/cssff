@@ -477,10 +477,10 @@ public:
 
 // Status.
 public:
-	int				GetNumBytesLeft();
-	int				GetNumBytesRead();
-	int				GetNumBitsLeft();
-	int				GetNumBitsRead();
+	int				GetNumBytesLeft() const;
+	int				GetNumBytesRead() const;
+	int				GetNumBitsLeft() const;
+	int				GetNumBitsRead() const;
 
 	// Has the buffer overflowed?
 	inline bool		IsOverflowed() const {return m_bOverflow;}
@@ -515,22 +515,22 @@ private:
 // Inlines.
 //-----------------------------------------------------------------------------
 
-inline int bf_read::GetNumBytesRead()	
+inline int bf_read::GetNumBytesRead() const
 {
 	return BitByte(m_iCurBit);
 }
 
-inline int bf_read::GetNumBitsLeft()	
+inline int bf_read::GetNumBitsLeft() const
 {
 	return m_nDataBits - m_iCurBit;
 }
 
-inline int bf_read::GetNumBytesLeft()	
+inline int bf_read::GetNumBytesLeft() const
 {
 	return GetNumBitsLeft() >> 3;
 }
 
-inline int bf_read::GetNumBitsRead()	
+inline int bf_read::GetNumBitsRead() const
 {
 	return m_iCurBit;
 }

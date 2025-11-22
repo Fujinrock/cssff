@@ -14,7 +14,7 @@ class SettingsManager
 public:
 	static SettingsManager *Instance( void );
 
-	void LoadSettings( const char *szSettingsFile = nullptr );
+	void LoadSettings( const char *szSettingsFile, bool bBatchDirSupplied );
 
 	// Checks if the multi-kill frag should be ticked for the given weapons
 	// Also checks if the frag is fast enough to be ticked or stationary

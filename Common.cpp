@@ -105,6 +105,13 @@ int GetTickRate( void )
 	return gpParser->GetTickRate();
 }
 
+int GetNumBytesLeft( void )
+{
+	assert( gpParser );
+
+	return gpParser->GetNumBytesLeft();
+}
+
 void OnParsingEnd( void )
 {
 	assert( gpParser );

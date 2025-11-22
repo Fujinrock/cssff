@@ -65,6 +65,7 @@ CSWeaponCategory GetWeaponCategory( CSWeaponID weapon )
  * @param num_weapons		number of weapon IDs in the array
  * @param outWeapon			used to store the weapon ID (or WEAPON_NONE) of the singular weapon that was used to do this frag
  * @param outCategory		used to store the weapon category (or CATEGORY_GENERAL) of the weapon(s) used to do this frag
+ * @noreturn
  */
 void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWeaponID &outWeapon, CSWeaponCategory &outCategory )
 {

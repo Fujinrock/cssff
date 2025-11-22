@@ -10,6 +10,7 @@
 
 /**
  * Parses the raw data of a demo file
+ * Should only be used to parse one demo
  */
 class DemoParser
 {
@@ -23,6 +24,8 @@ public:
 	int GetTickCount( void ) const;					///< Get the # of ticks in the demo
 	int GetCurrentTick( void ) const;				///< Get the tick currently being parsed
 	int GetTickRate( void ) const;					///< Get the # of ticks per second
+	int GetNumBytesLeft( void ) const;				///< Get the # of bytes left in the demo that haven't been read
+	int GetNumFragsFound( void ) const;				///< Get the # of frags found in the demo
 	void OnParsingEnd( void );						///< Called when demo is successfully parsed or a parsing error is thrown
 
 private:
@@ -160,4 +163,5 @@ private:
 	bool				m_bGameEventListEncountered;	///< Whether SVC_GameEventList was encountered while parsing the demo
 
 	DemoFile *			m_pDemo;						///< The demo being parsed
+	bf_read				m_reader;						///< The main reader that keeps track of how much of the demo has been parsed
 };

@@ -73,17 +73,17 @@ bool DemoParser::Parse( void )
 		printf( "Press 'Q' to abort early\n\n" );
 	}
 
-	bf_read reader( m_pDemo->GetBuffer(), m_pDemo->GetFileSize() );
+	m_reader.StartReading( m_pDemo->GetBuffer(), m_pDemo->GetFileSize() );
 
 	// Read the header
-	reader.ReadBytes( &m_demoHeader, sizeof( m_demoHeader ) );
+	m_reader.ReadBytes( &m_demoHeader, sizeof( m_demoHeader ) );
 
 	bool bAborted = false;	// Did the user abort parsing?
 	bool bSynced = false;	// Was sync tick encountered yet?
 
 	// Set up the progress bar
 	const int numProgressDots = Settings()->BatchProcessingEnabled()? 5 : 10;
-	const int printProgressTicks = (m_demoHeader.playback_ticks > 0)? (m_demoHeader.playback_ticks / numProgressDots) : (250000 / numProgressDots);
+	const int printProgressTicks = (m_demoHeader.playback_ticks > 0)? (m_demoHeader.playback_ticks / numProgressDots) : (250'000 / numProgressDots);
 	int lastTick = 0;
 	int progressTick = 0;
 	int numPrinted = 0;
@@ -94,9 +94,9 @@ bool DemoParser::Parse( void )
 	while( true )
 	{
 		// Read command type
-		byte cmd = reader.ReadByte();
+		byte cmd = m_reader.ReadByte();
 
-		if( cmd < dem_firstcmd || cmd > dem_lastcmd || reader.IsOverflowed() )
+		if( cmd < dem_firstcmd || cmd > dem_lastcmd || m_reader.IsOverflowed() )
 			throw ParsingError_t( "invalid cmd number" );
 
 		// Done parsing?
@@ -104,7 +104,7 @@ bool DemoParser::Parse( void )
 			break;
 
 		// Read current tick
-		m_iCurrentTick = reader.ReadLong();
+		m_iCurrentTick = m_reader.ReadLong();
 
 		// Print dots for the progress bar
 		if( bSynced )
@@ -140,23 +140,23 @@ bool DemoParser::Parse( void )
 			case dem_signon:
 			case dem_packet:
 			{
-				HandleDemoPacket( reader );
+				HandleDemoPacket( m_reader );
 				break;
 			}
 
 			case dem_consolecmd:
 			{
-				size_t datasize = reader.ReadLong();
-				reader.SeekRelative( BYTES2BITS( datasize ) );
+				size_t datasize = m_reader.ReadLong();
+				m_reader.SeekRelative( BYTES2BITS( datasize ) );
 				break;
 			}
 
 			case dem_datatables:
 			{
 				// Fork the reader
-				size_t datasize = reader.ReadLong();
+				size_t datasize = m_reader.ReadLong();
 				char *data = new char[ datasize ];
-				reader.ReadBytes( data, datasize );
+				m_reader.ReadBytes( data, datasize );
 				bf_read forkedReader( data, datasize );
 
 				ParseDataTables( forkedReader );
@@ -166,9 +166,9 @@ bool DemoParser::Parse( void )
 
 			case dem_usercmd:
 			{
-				int32 outgoing_sequence = reader.ReadLong();
-				size_t datasize = reader.ReadLong();
-				reader.SeekRelative( BYTES2BITS( datasize ) );
+				int32 outgoing_sequence = m_reader.ReadLong();
+				size_t datasize = m_reader.ReadLong();
+				m_reader.SeekRelative( BYTES2BITS( datasize ) );
 				break;
 			}
 		}
@@ -250,6 +250,20 @@ int DemoParser::GetCurrentTick( void ) const
 int DemoParser::GetTickRate( void ) const
 {
 	return m_iTickRate;
+}
+
+// ==================================================================================================================
+
+int DemoParser::GetNumBytesLeft( void ) const
+{
+	return m_reader.GetNumBytesLeft();
+}
+
+// ==================================================================================================================
+
+int DemoParser::GetNumFragsFound( void ) const
+{
+	return m_Frags.size();
 }
 
 // ==================================================================================================================

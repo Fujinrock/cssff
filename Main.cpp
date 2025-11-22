@@ -3,6 +3,8 @@
 #include "Common.h"
 #include "Errors.h"
 #include "Settings.h"
+
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <stdio.h>
 #include <vector>
@@ -32,6 +34,7 @@ bool FindDemosInFolder( const std::string &sDirectory )
 
 	if( hFile == INVALID_HANDLE_VALUE )
 	{
+		FindClose( hFile );
 		return false;
 	}
 
@@ -64,6 +67,13 @@ bool FindDemosInFolder( const std::string &sDirectory )
  */
 bool WriteBatchOutput( bool bAborted )
 {
+	// Don't write the results if there is absolutely nothing to write
+	if( g_BatchOutput.empty() && g_FailedDemos.empty() && g_WarningDemos.empty() )
+	{
+		printf( "No frags, warnings or errors - skipped writing results to file\n\n" );
+		return false;
+	}
+
 	tm timeinfo;
 	time_t rawtime;
 	time( &rawtime );
@@ -160,10 +170,10 @@ bool WriteBatchOutput( bool bAborted )
 }
 
 /**
-* Prints the demo error in detail and adds it to the list of failed demos if need be
-* @param demo				the demo containing the error
-* @noreturn
-*/
+ * Prints the demo error in detail and adds it to the list of failed demos if need be
+ * @param demo				the demo containing the error
+ * @noreturn
+ */
 void HandleDemoError( const DemoFile &demo )
 {
 	assert( !demo.IsValidDemo() );
@@ -272,9 +282,6 @@ int main( int argc, char *argv[] )
 		g_ProgramDirectory = "";
 	}
 
-	// Load program settings
-	Settings()->LoadSettings( szSettingsArg );
-
 	// Check if we should search for demos from a different folder
 	if( szBatchDirArg )
 	{
@@ -303,6 +310,9 @@ int main( int argc, char *argv[] )
 		}
 	}
 
+	// Load program settings
+	Settings()->LoadSettings( szSettingsArg, szBatchDirArg != nullptr );
+
 	// Should we batch process the folder?
 	if( s_DemosToParse.empty() )
 	{
@@ -325,6 +335,7 @@ int main( int argc, char *argv[] )
 
 	const int nDemosToParse = s_DemosToParse.size();
 	int nParsedDemos = 0;
+	int nFragsFound = 0;
 
 	// Disable batch processing if we don't have multiple demos to parse
 	if( Settings()->BatchProcessingEnabled() && nDemosToParse <= 1 )
@@ -350,19 +361,22 @@ int main( int argc, char *argv[] )
 
 		const char *szCurrentDemo = s_DemosToParse[ nDemo ].c_str();
 
-		try // Try parsing the demo
+		DemoFile demo( szCurrentDemo );
+
+		if( !demo.IsValidDemo() )
 		{
-			DemoFile demo( szCurrentDemo );
+			HandleDemoError( demo );
+			continue;
+		}
 
-			if( !demo.IsValidDemo() )
-			{
-				HandleDemoError( demo );
-				continue;
-			}
+		DemoParser parser( &demo );
 
-			DemoParser parser( &demo );
-
+		// Try parsing the demo
+		try
+		{
 			bAborted = !parser.Parse();
+
+			nFragsFound += parser.GetNumFragsFound();
 
 			if( bAborted )
 				break;
@@ -371,9 +385,14 @@ int main( int argc, char *argv[] )
 		}
 		catch( ParsingError_t error )
 		{
+			nFragsFound += parser.GetNumFragsFound();
+
 			// Ignore errors at the end of a demo, since they often happen on map change etc.
 			if( error.at_end_of_demo )
+			{
+				++nParsedDemos;
 				continue;
+			}
 
 			if( Settings()->BatchProcessingEnabled() )
 			{
@@ -400,7 +419,10 @@ int main( int argc, char *argv[] )
 	printf( "\nElapsed time: ");
 	if( elapsed_minutes )
 		printf( "%d minutes ", elapsed_minutes );
-	printf( "%d seconds\n\n", remaining_seconds );
+	printf( "%d seconds\n", remaining_seconds );
+
+	// Print number of frags found
+	printf( "Frags found: %d\n\n", nFragsFound );
 
 	// Write batch output
 	if( Settings()->BatchProcessingEnabled() )

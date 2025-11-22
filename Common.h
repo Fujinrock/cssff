@@ -2,7 +2,7 @@
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.1.0"
+#define	CSSFF_NAME					"CSSFF v2.1.2"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_PROTOCOL				3			// 3 for all versions of CS:S
@@ -51,6 +51,7 @@ float GetTimeBetweenTicks( int, int );
 int GetTotalTickCount( void );
 int GetCurrentTick( void );
 int GetTickRate( void );
+int GetNumBytesLeft( void );
 void OnParsingEnd( void );
 
 struct QAngle
