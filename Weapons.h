@@ -20,7 +20,7 @@ static const char * s_WeaponAliasInfo[] =
 	"famas",	// 13 WEAPON_FAMAS
 	"USP",		// 14 WEAPON_USP
 	"AWP",		// 15 WEAPON_AWP
-	"MP5navy",	// 16 WEAPON_MP5N 
+	"MP5navy",	// 16 WEAPON_MP5NAVY
 	"M249",		// 17 WEAPON_M249
 	"M3",		// 18 WEAPON_M3
 	"M4A1",		// 19 WEAPON_M4A1
@@ -87,7 +87,7 @@ enum CSWeaponCategory
 {
 	CATEGORY_NONE = 0,
 
-	CATEGORY_KNIFE,
+	CATEGORY_KNIFE = WEAPON_MAX,
 	CATEGORY_PISTOL,
 	CATEGORY_SHOTGUN,
 	CATEGORY_SMG,
@@ -103,7 +103,7 @@ enum CSWeaponCategory
 
 CSWeaponCategory GetWeaponCategory( CSWeaponID weapon );
 
-CSWeaponCategory GetWeaponCategory( CSWeaponID *pWeapons, int num_weapons );
+void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWeaponID &outWeapon, CSWeaponCategory &outCategory );
 
 CSWeaponID AliasToWeaponID( const char *alias );
 

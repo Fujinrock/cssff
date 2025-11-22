@@ -306,7 +306,7 @@ bool KillIsFlickshot( const Player *player, kill_info_t &kill )
 	if( category == CATEGORY_GRENADE )
 		return false;
 
-	const int flick_duration_ms = Settings()->GetFlickshotDurationForCategory( category );
+	const int flick_duration_ms = Settings()->GetFlickshotDurationForWeapon( kill.weaponID );
 
 	if( flick_duration_ms <= 0 )
 		return false;
@@ -371,7 +371,7 @@ void DemoParser::DoPlayersPostCheck()
 #endif
 			if( kill.midair != ON_GROUND )
 			{
-				min_air_time = Settings()->GetMinPostKillAirTimeForCategory( curCategory );
+				min_air_time = Settings()->GetMinPostKillAirTimeForWeapon( kill.weaponID );
 				if( min_air_time < 0.0 )
 					min_air_time = 0.0;
 			}

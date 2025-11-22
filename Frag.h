@@ -66,6 +66,7 @@ struct multi_kill_frag_descriptor_t
 	uint32 start_tick;				///< Tick of the first kill done
 	uint32 end_tick;				///< Tick of the last kill done
 	float frag_length;				///< Frag length in seconds
+	bool is_stationary;				///< Whether this is a slow frag that was ticked because it's stationary
 
 	enum { FRAG_MAX_WEAPONS = 5 };
 	CSWeaponID weapons[ FRAG_MAX_WEAPONS ];
@@ -103,7 +104,7 @@ public:
 	MultiKillFragType GetMultiKillFragType( void ) const;
 
 	// Try to add a new 5/4/3k descriptor to this frag, possibly deleting the previous descriptor if one exists and this is a better frag
-	bool AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID *weapons, short num_weapons, uint32 start_tick, uint32 end_tick, short headshots );
+	bool AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID *weapons, short num_weapons, uint32 start_tick, uint32 end_tick, short headshots, bool is_stationary );
 
 	// Add a descriptor for a 1k/collat frag
 	void AddFragDescriptor( uint32 tick, unsigned short type_flags, short teamkills, short headshots, CSWeaponID weapon, float distance, float flickangle, float time_to_closest_kill );

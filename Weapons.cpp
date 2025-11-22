@@ -9,7 +9,8 @@ CSWeaponCategory GetWeaponCategory( CSWeaponID weapon )
 {
 	switch( weapon )
 	{
-		default: return CATEGORY_NONE;
+		default:
+			return CATEGORY_NONE;
 
 		case WEAPON_KNIFE:
 			return CATEGORY_KNIFE;
@@ -58,39 +59,94 @@ CSWeaponCategory GetWeaponCategory( CSWeaponID weapon )
 }
 
 // =====================================================================================================================================================================
-
-CSWeaponCategory GetWeaponCategory( CSWeaponID *pWeapons, int num_weapons )
+/**
+ * Determines what settings category should be used to check if this multikill frag should be ticked
+ * @param pWeapons			pointer to the CSWeaponID array holding the used weapons
+ * @param num_weapons		number of weapon IDs in the array
+ * @param outWeapon			used to store the weapon ID (or WEAPON_NONE) of the singular weapon that was used to do this frag
+ * @param outCategory		used to store the weapon category (or CATEGORY_GENERAL) of the weapon(s) used to do this frag
+ */
+void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWeaponID &outWeapon, CSWeaponCategory &outCategory )
 {
+	// Rules for determining the category:
+	// - If a single weapon was used, its ID and category are returned
+	// - If multiple weapons of the same category were used and it was less than 5k, or a 5k but neither weapon killed 4,
+	//	 WEAPON_NONE is returned for weapon ID but their common weapon category is returned
+	// - If a 5k had two weapons, but the other weapon was used to do 4 of the kills, its weapon ID and category are returned
+	// - If a 5k had more weapons but only two categories and the other category had 4 kills, return WEAPON_NONE and the category with 4 kills
+	// - If more than two weapons were used or weapons of different categories were used and the rules above don't apply,
+	//	 WEAPON_NONE and CATEGORY_GENERAL are returned
+	// Got all that?
+
 	// This function is a bit hacky in that it relies on the fact that num_weapons == number of kills,
 	// because duplicate weapons are not removed before calling this
+	std::map< CSWeaponID, int > weapons;
 	std::map< CSWeaponCategory, int > categories;
 
 	for( int i = 0; i < num_weapons; ++i )
 	{
 		CSWeaponCategory category = GetWeaponCategory( pWeapons[ i ] );
 
+		++weapons[ pWeapons[ i ] ];
 		++categories[ category ];
 	}
 
-	assert( categories.size() > 0 );
+	assert( weapons.size() > 0 && categories.size() > 0 );
 
-	if( categories.size() == 1 )
-		return categories.begin()->first;
-
-	// If a 4k or 3k has more than 1 category, use the general category
-	// also use the general category if a (+)5k has more than 2 categories
-	if( num_weapons < 5 || categories.size() > 2 )
-		return CATEGORY_GENERAL;
-
-	// If a (+)5k has 2 categories, and the other category has only 1 kill, use the category with more kills
-	for( auto it = categories.begin(); it != categories.end(); ++it )
+	// Only one weapon, return its ID and category
+	if( weapons.size() == 1 )
 	{
-		if( it->second == num_weapons - 1 )
-			return it->first;
+		outWeapon = weapons.begin()->first;
+		outCategory = categories.begin()->first;
+		return;
 	}
 
-	// (+)5k with mixed weapons, use the general category
-	return CATEGORY_GENERAL;
+	// More than one weapon but same category in a 4k or 3k
+	// Return WEAPON_NONE and common category
+	// (+)5k will be checked later
+	if( categories.size() == 1 && num_weapons < 5 )
+	{
+		outWeapon = WEAPON_NONE;
+		outCategory = categories.begin()->first;
+		return;
+	}
+
+	// If a 4k or 3k has more than 1 category or a (+)5k has more than 2 categories,
+	// use WEAPON_NONE and the general category
+	if( num_weapons < 5 || categories.size() > 2 )
+	{
+		outWeapon = WEAPON_NONE;
+		outCategory = CATEGORY_GENERAL;
+		return;
+	}
+
+	// At this point we know it's a (+)5k with more than one weapon
+	outWeapon = WEAPON_NONE;
+	outCategory = CATEGORY_GENERAL;
+
+	// If the other of two weapons did 4 of the kills, return it and its category
+	if( weapons.size() == 2 )
+	{
+		for( const auto &[weapon, count] : weapons )
+		{
+			if( count == num_weapons - 1 )
+			{
+				outWeapon = weapon;
+				outCategory = GetWeaponCategory( weapon );
+				return;
+			}
+		}
+	}
+
+	// The (+)5k has more than two weapons, so WEAPON_NONE will be returned, but check if we can still return a common category
+	for( const auto &[category, count] : categories )
+	{
+		if( count >= num_weapons - 1 )
+		{
+			outCategory = category;
+			return;
+		}
+	}
 }
 
 // =====================================================================================================================================================================

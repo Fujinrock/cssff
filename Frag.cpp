@@ -55,10 +55,12 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 			farthest_kill_distance = distance_to_start;
 	}
 
-	if( !Settings()->ShouldTickFrag( frag_type, GetWeaponCategory( weapons, num_weapons ), frag_time, farthest_kill_distance, num_headshots, contains_special_kill ) )
+	bool bIsStationary = false;
+
+	if( !Settings()->ShouldTickFrag( frag_type, weapons, num_weapons, frag_time, farthest_kill_distance, num_headshots, contains_special_kill, bIsStationary ) )
 		return false;
 
-	return frag.AddMultiKillFragDescriptor( frag_type, weapons, num_weapons, start_tick, end_tick, num_headshots );
+	return frag.AddMultiKillFragDescriptor( frag_type, weapons, num_weapons, start_tick, end_tick, num_headshots, bIsStationary );
 }
 
 // =====================================================================================================================================================================
@@ -365,7 +367,7 @@ void frag_descriptor_t::GetStringRepresentation( char *buffer, size_t buffer_siz
 		size_t len = strlen( buffer );
 		buffer[ len-1 ] = 's';
 		buffer[ len ] = ' ';
-		buffer[ len+1 ] = '\0';
+		buffer[ len+1 ] = '\000';
 	}
 
 	if( FragIsCollat( type_flags ) )
@@ -448,7 +450,7 @@ void frag_descriptor_t::GetStringRepresentation( char *buffer, size_t buffer_siz
 
 	// Remove last character, because the description always ends in a whitespace
 	size_t len = strlen( buffer );
-	buffer[ len-1 ] = '\0';
+	buffer[ len-1 ] = '\000';
 }
 
 // =====================================================================================================================================================================
@@ -477,7 +479,14 @@ int frag_descriptor_t::GetRoundedFlickAngle( void ) const
 
 void multi_kill_frag_descriptor_t::GetStringRepresentation( char *buffer, size_t buffer_size ) const
 {
-	_snprintf_s( buffer, buffer_size, buffer_size, "%dk ", static_cast<int>(frag_type) );
+	if( is_stationary )
+	{
+		_snprintf_s( buffer, buffer_size, buffer_size, "stationary %dk ", static_cast<int>(frag_type) );
+	}
+	else
+	{
+		_snprintf_s( buffer, buffer_size, buffer_size, "%dk ", static_cast<int>(frag_type) );
+	}
 
 	byte hs_print_mode = PRINT_HS_IN_MAIN;
 
@@ -566,7 +575,7 @@ void multi_kill_frag_descriptor_t::GetStringRepresentation( char *buffer, size_t
 
 	// Remove last character, because the description always ends in a whitespace
 	size_t len = strlen( buffer );
-	buffer[ len-1 ] = '\0';
+	buffer[ len-1 ] = '\000';
 }
 
 // =====================================================================================================================================================================
@@ -627,6 +636,7 @@ void multi_kill_frag_descriptor_t::Reset( void )
 	start_tick = -1;
 	end_tick = -1;
 	frag_length = -1;
+	is_stationary = false;
 
 	sub_descriptors.clear();
 
@@ -657,7 +667,7 @@ MultiKillFragType Frag::GetMultiKillFragType( void ) const
 
 // =====================================================================================================================================================================
 
-bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID *weapons, short num_weapons, uint32 start_tick, uint32 end_tick, short headshots )
+bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID *weapons, short num_weapons, uint32 start_tick, uint32 end_tick, short headshots, bool is_stationary )
 {
 	assert( m_descriptors.size() == 0 ); // No other descriptors should have been added yet
 
@@ -705,6 +715,7 @@ bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID 
 	m_multiKillDescriptor.end_tick = end_tick;
 	m_multiKillDescriptor.frag_length = frag_length;
 	m_multiKillDescriptor.headshots = headshots;
+	m_multiKillDescriptor.is_stationary = is_stationary;
 	m_multiKillDescriptor.AddWeaponIDs( weapons, num_weapons );
 
 	if( m_nStartTick == INVALID_TICK || start_tick < m_nStartTick )
@@ -737,7 +748,7 @@ void Frag::AddFragDescriptor( uint32 tick, unsigned short type_flags, short team
 	// but separate descriptors are not necessarily added depending on the settings
 	if( !in_multikill_frag )
 	{
-		if( !Settings()->ShouldTickFrag( type_flags, GetWeaponCategory( weapon ), distance, headshots, time_to_closest_kill ) )
+		if( !Settings()->ShouldTickFrag( type_flags, weapon, distance, headshots, time_to_closest_kill ) )
 			return;
 	}
 
@@ -865,8 +876,15 @@ void Frag::GetStringRepresentation( char *buffer, size_t buffer_size ) const
 
 	if( m_multiKillDescriptor.IsValid() )
 	{
-		char mkbuffer[512];
+		char mkbuffer[512] = "\000";
 		m_multiKillDescriptor.GetStringRepresentation( mkbuffer, sizeof(mkbuffer) );
+		
+		// Capitalize the S if the frag is stationary and this is the beginning of the description
+		if( m_multiKillDescriptor.is_stationary && m_nTotalKills == implied_kills && mkbuffer[0] != '\000' )
+		{
+			mkbuffer[0] = toupper( mkbuffer[0] );
+		}
+
 		strcat_s( buffer, buffer_size, mkbuffer );
 
 		if( m_descriptors.size() )
@@ -879,7 +897,7 @@ void Frag::GetStringRepresentation( char *buffer, size_t buffer_size ) const
 	const int first_descriptor = m_descriptors.size() - 1;
 	for( int i = first_descriptor; i >= 0; --i )
 	{
-		char descbuffer[256] = "\0";
+		char descbuffer[256] = "\000";
 		m_descriptors[ i ].GetStringRepresentation( descbuffer, sizeof(descbuffer) );
 
 		// Capitalize first letter if this is the first descriptor
@@ -887,7 +905,7 @@ void Frag::GetStringRepresentation( char *buffer, size_t buffer_size ) const
 		&& m_nTotalKills == implied_kills
 		&& !m_multiKillDescriptor.IsValid()
 		&& m_descriptors[ i ].count == 1
-		&& descbuffer[0] != '\0' )
+		&& descbuffer[0] != '\000' )
 		{
 			descbuffer[0] = toupper( descbuffer[0] );
 		}
