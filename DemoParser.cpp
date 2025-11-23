@@ -1,4 +1,4 @@
-#include "DemoParser.h"
+﻿#include "DemoParser.h"
 #include "Errors.h"
 #include "bitbuf.h"
 #include "Settings.h"
@@ -315,11 +315,11 @@ void DemoParser::OnParsingEnd( void )
 
 			if( Settings()->WriteOutputToDemoDirectory() )
 			{
-				file_output.open( g_BatchDirectory + filename );
+				file_output.open( g_BatchDirectory + filename, std::ios::binary );
 			}
 			else
 			{
-				file_output.open( g_ProgramDirectory + filename );
+				file_output.open( g_ProgramDirectory + filename, std::ios::binary );
 			}
 		}
 
@@ -336,7 +336,10 @@ void DemoParser::OnParsingEnd( void )
 				printf( szFragDescription );
 
 				if( Settings()->DumpToFileEnabled() && file_output.is_open() )
+				{
+					WRITE_UTF8_BOM( file_output );
 					file_output.write( szFragDescription, strlen( szFragDescription ) );
+				}
 			}
 			else
 			{

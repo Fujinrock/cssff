@@ -1,4 +1,4 @@
-#include "DemoFile.h"
+﻿#include "DemoFile.h"
 #include "DemoParser.h"
 #include "Common.h"
 #include "Errors.h"
@@ -92,12 +92,12 @@ bool WriteBatchOutput( bool bAborted )
 	if( Settings()->WriteOutputToDemoDirectory() )
 	{
 		// Open in the batch directory
-		file_output.open( g_BatchDirectory + szOutputFile );
+		file_output.open( g_BatchDirectory + szOutputFile, std::ios::binary );
 	}
 	else
 	{
 		// Open in executable directory
-		file_output.open( g_ProgramDirectory + szOutputFile );
+		file_output.open( g_ProgramDirectory + szOutputFile, std::ios::binary );
 	}
 
 	if( !file_output.is_open() )
@@ -105,6 +105,9 @@ bool WriteBatchOutput( bool bAborted )
 		printf( "Failed to write results to file\n\n" );
 		return false;
 	}
+
+	// Make sure the file is interpreted as UTF-8
+	WRITE_UTF8_BOM( file_output );
 
 	char szInfo[ 128 ];
 	_snprintf_s( szInfo, sizeof(szInfo), sizeof(szInfo), "%s ", CSSFF_NAME );
@@ -245,6 +248,7 @@ void HandleDemoError( const DemoFile &demo )
 int main( int argc, char *argv[] )
 {
 	SetConsoleTitle( TEXT(CSSFF_NAME) );
+	SetConsoleOutputCP( CP_UTF8 );
 
 #ifdef _DEBUG
 	system( "pause" );

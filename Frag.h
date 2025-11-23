@@ -15,7 +15,7 @@ typedef std::vector< Frag > FragVector;
 #define FL_KILL_PENTA			(1<<3)
 #define FL_KILL_FLASHKILL		(1<<4)
 #define FL_KILL_SMOKEKILL		(1<<5)
-#define FL_KILL_MIDAIR			(1<<6)
+#define FL_KILL_JUMPSHOT		(1<<6)
 #define FL_KILL_FLICKSHOT		(1<<7)
 #define FL_KILL_NOSCOPE			(1<<8)
 #define FL_KILL_WALLBANG		(1<<9)
@@ -42,7 +42,7 @@ enum MultiKillFragType
  */
 struct frag_descriptor_t
 {
-	unsigned short type_flags;		///< Flags describing this frag (for example "noscope mid-air double")
+	unsigned short type_flags;		///< Flags describing this frag (for example "noscope jump double")
 	short headshots;				///< How many headshots are in this frag
 	short teamkills;				///< How many teamkills are in this frag
 	short count;					///< How many times this frag type was done (for example "2 doubles")

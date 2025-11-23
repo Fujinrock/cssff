@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.1.4"
+#define	CSSFF_NAME					"CSSFF v2.1.5"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_PROTOCOL				3			// 3 for all versions of CS:S
@@ -20,8 +20,8 @@
 
 // Mid-air kill types
 #define ON_GROUND					0
-#define IN_AIR						1
-#define ON_LADDER					2
+#define JUMPSHOT					1
+#define LADDERSHOT					2
 
 #define MAX_PLAYER_NAME_LENGTH		32
 
@@ -31,6 +31,9 @@
 
 #define BITS2BYTES( bits )			((bits+7)>>3)
 #define BYTES2BITS( bytes )			(bytes<<3)
+
+// For ofstream objects
+#define WRITE_UTF8_BOM( file )		file.write( "\xEF\xBB\xBF", 3 )
 
 typedef unsigned char				byte;
 typedef __int32			 			int32;

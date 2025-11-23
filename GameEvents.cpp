@@ -406,7 +406,7 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 		// ===== Mid-air check ====================
 		// Check this here AND in player post check, to make sure the player is properly in the air
-		char midair = ON_GROUND;
+		char midair_status = ON_GROUND;
 
 		// Don't check for spectated mid-air kills in POV demos, because for some reason send props are not properly updated
 		if( bullet_kill && !bSpectatingAttacker )
@@ -424,15 +424,15 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 					if( !prop )
 					{
-						midair = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? IN_AIR : ON_GROUND;
+						midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
 					}
 					else if( prop->m_pPropValue->m_value.m_int == MOVETYPE_LADDER )
 					{
-						midair = ON_LADDER;
+						midair_status = LADDERSHOT;
 					}
 					else
 					{
-						midair = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? IN_AIR : ON_GROUND;
+						midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
 					}
 				}
 			}
@@ -484,7 +484,7 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 			distance = to.Length();
 		}
 
-		pAttacker->AddKill( m_iCurrentTick, attackerTeam, weaponName, teamkill, headshot, noscope, midair, penetrated, flickshot, distance, vecAttacker, bSpectatingAttacker, blind_kill );
+		pAttacker->AddKill( m_iCurrentTick, attackerTeam, weaponName, teamkill, headshot, noscope, midair_status, penetrated, flickshot, distance, vecAttacker, bSpectatingAttacker, blind_kill );
 	}
 }
 

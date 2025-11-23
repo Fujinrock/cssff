@@ -43,7 +43,7 @@ void Player::AddKill(
 	bool teamkill,
 	bool headshot,
 	bool noscope,
-	char midair,
+	char midair_status,
 	byte penetrated,
 	bool flickshot,
 	float distance,
@@ -58,7 +58,7 @@ void Player::AddKill(
 	info.teamkill = teamkill;
 	info.headshot = headshot;
 	info.noscope = noscope;
-	info.midair = midair;
+	info.midair_status = midair_status;
 	info.penetrated = penetrated != 0;
 	info.flickshot = flickshot;
 	info.distance = distance;
@@ -369,7 +369,7 @@ void DemoParser::DoPlayersPostCheck()
 			assert( (category == CATEGORY_NONE) || (category == curCategory) );
 			category = curCategory;
 #endif
-			if( kill.midair != ON_GROUND )
+			if( kill.midair_status != ON_GROUND )
 			{
 				min_air_time = Settings()->GetMinPostKillAirTimeForWeapon( kill.weaponID );
 				if( min_air_time < 0.0 )
@@ -378,9 +378,9 @@ void DemoParser::DoPlayersPostCheck()
 
 			if( bCheckedMidAir )
 			{
-				kill.midair = midair_status;
+				kill.midair_status = midair_status;
 			}
-			else if( kill.midair != ON_GROUND && !kill.spectated ) // It had to be a mid-air kill previously, too
+			else if( kill.midair_status != ON_GROUND && !kill.spectated ) // It had to be a mid-air kill previously, too
 			{
 				EntityEntry *pEntAttacker = FindEntity( player->entityIndex );
 				PropEntry *prop = pEntAttacker->FindProp( "m_fFlags" );
@@ -393,11 +393,11 @@ void DemoParser::DoPlayersPostCheck()
 					if( !(flags & FL_ONGROUND) )
 					{
 						// Don't change jumpshot to a ladderkill or the other way around
-						midair_status = kill.midair;
+						midair_status = kill.midair_status;
 					}
 				}
 
-				kill.midair = midair_status;
+				kill.midair_status = midair_status;
 				bCheckedMidAir = true;
 			}
 

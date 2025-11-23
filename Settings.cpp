@@ -28,7 +28,7 @@ extern std::string g_BatchDirectory;
 #define KEY_TICK_QUADROS						"tick_quadros"
 #define KEY_TICK_PENTAS							"tick_pentas"
 #define KEY_TICK_FLASH_SMOKE_KILLS				"tick_flash_smoke_kills"
-#define KEY_TICK_MIDAIR_KILLS					"tick_mid_air_kills"
+#define KEY_TICK_JUMPSHOTS						"tick_jumpshots"
 #define KEY_TICK_NOSCOPES						"tick_noscopes"
 #define KEY_TICK_FLICKSHOTS						"tick_flickshots"
 #define KEY_TICK_WALLBANGS						"tick_wallbangs"
@@ -55,10 +55,10 @@ extern std::string g_BatchDirectory;
 #define KEY_NOSCOPE_MIN_DISTANCE				"noscope_min_distance"
 #define KEY_NOSCOPE_MIN_DISTANCE_HS_MOD			"noscope_min_distance_hs_modifier"
 #define KEY_NOSCOPE_MIN_DISTANCE_WB_MOD			"noscope_min_distance_wb_modifier"
-#define KEY_MIDAIR_MIN_POSTKILL_AIR_TIME		"mid_air_min_post_kill_air_time"
-#define KEY_MIDAIR_MIN_DISTANCE					"mid_air_min_distance"
-#define KEY_MIDAIR_MIN_DISTANCE_HS_MOD			"mid_air_min_distance_hs_modifier"
-#define KEY_MIDAIR_MIN_DISTANCE_WB_MOD			"mid_air_min_distance_wb_modifier"
+#define KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME		"jumpshot_min_post_kill_air_time"
+#define KEY_JUMPSHOT_MIN_DISTANCE				"jumpshot_min_distance"
+#define KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD		"jumpshot_min_distance_hs_modifier"
+#define KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD		"jumpshot_min_distance_wb_modifier"
 #define KEY_WALLBANG_HEADSHOT_ONLY				"wallbang_headshot_only"
 #define KEY_WALLBANG_REQUIRE_ANOTHER_KILL		"wallbang_require_another_kill"
 #define KEY_WALLBANG_ANOTHER_KILL_MAX_DT		"wallbang_another_kill_max_delta_time"
@@ -163,7 +163,7 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_TICK_QUADROS ].m_bool = true;
 	general_settings[ KEY_TICK_PENTAS ].m_bool = true;
 	general_settings[ KEY_TICK_FLASH_SMOKE_KILLS ].m_bool = true;
-	general_settings[ KEY_TICK_MIDAIR_KILLS ].m_bool = true;
+	general_settings[ KEY_TICK_JUMPSHOTS ].m_bool = true;
 	general_settings[ KEY_TICK_NOSCOPES ].m_bool = true;
 	general_settings[ KEY_TICK_FLICKSHOTS ].m_bool = true;
 	general_settings[ KEY_TICK_WALLBANGS ].m_bool = true;
@@ -193,10 +193,10 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_NOSCOPE_MIN_DISTANCE ].m_float = 1000.f;
 	general_settings[ KEY_NOSCOPE_MIN_DISTANCE_HS_MOD ].m_float = 0.5f;
 	general_settings[ KEY_NOSCOPE_MIN_DISTANCE_WB_MOD ].m_float = 0.5f;
-	general_settings[ KEY_MIDAIR_MIN_POSTKILL_AIR_TIME ].m_float = 0.1f;
-	general_settings[ KEY_MIDAIR_MIN_DISTANCE ].m_float = 1000.f;
-	general_settings[ KEY_MIDAIR_MIN_DISTANCE_HS_MOD ].m_float = 0.5f;
-	general_settings[ KEY_MIDAIR_MIN_DISTANCE_WB_MOD ].m_float = 0.5f;
+	general_settings[ KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME ].m_float = 0.1f;
+	general_settings[ KEY_JUMPSHOT_MIN_DISTANCE ].m_float = 1000.f;
+	general_settings[ KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD ].m_float = 0.5f;
+	general_settings[ KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD ].m_float = 0.5f;
 	general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int = 150;
 	general_settings[ KEY_FLICKSHOT_HEADSHOT_ONLY ].m_bool = false;
 	general_settings[ KEY_FLICKSHOT_MIN_DISTANCE ].m_float = 100.f;
@@ -414,9 +414,9 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		{
 			SetKeyValueBool( KEY_TICK_FLASH_SMOKE_KILLS, value )
 		}
-		else if( key == KEY_TICK_MIDAIR_KILLS )
+		else if( key == KEY_TICK_JUMPSHOTS )
 		{
-			SetKeyValueBool( KEY_TICK_MIDAIR_KILLS, value )
+			SetKeyValueBool( KEY_TICK_JUMPSHOTS, value )
 		}
 		else if( key == KEY_TICK_NOSCOPES )
 		{
@@ -534,21 +534,21 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		{
 			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD, value )
 		}
-		else if( key == KEY_MIDAIR_MIN_POSTKILL_AIR_TIME )
+		else if( key == KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME )
 		{
-			SetKeyValueFloat( KEY_MIDAIR_MIN_POSTKILL_AIR_TIME, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME, value )
 		}
-		else if( key == KEY_MIDAIR_MIN_DISTANCE )
+		else if( key == KEY_JUMPSHOT_MIN_DISTANCE )
 		{
-			SetKeyValueFloat( KEY_MIDAIR_MIN_DISTANCE, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE, value )
 		}
-		else if( key == KEY_MIDAIR_MIN_DISTANCE_HS_MOD )
+		else if( key == KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD )
 		{
-			SetKeyValueFloat( KEY_MIDAIR_MIN_DISTANCE_HS_MOD, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD, value )
 		}
-		else if( key == KEY_MIDAIR_MIN_DISTANCE_WB_MOD )
+		else if( key == KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD )
 		{
-			SetKeyValueFloat( KEY_MIDAIR_MIN_DISTANCE_WB_MOD, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, value )
 		}
 		else if( key == KEY_FLICKSHOT_MAX_DURATION )
 		{
@@ -1047,9 +1047,9 @@ bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weap
 		}
 	}
 
-	if( (type_flags & FL_KILL_MIDAIR) || (type_flags & FL_KILL_LADDERSHOT) )
+	if( (type_flags & FL_KILL_JUMPSHOT) || (type_flags & FL_KILL_LADDERSHOT) )
 	{
-		if( ShouldTickFrag( KEY_TICK_MIDAIR_KILLS, KEY_MIDAIR_MIN_DISTANCE, KEY_MIDAIR_MIN_DISTANCE_HS_MOD, KEY_MIDAIR_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
+		if( ShouldTickFrag( KEY_TICK_JUMPSHOTS, KEY_JUMPSHOT_MIN_DISTANCE, KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD, KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
 			return true;
 	}
 
@@ -1122,7 +1122,7 @@ float SettingsManager::GetFlickshotMinDistanceForWeapon( CSWeaponID weapon )
 
 float SettingsManager::GetMinPostKillAirTimeForWeapon( CSWeaponID weapon )
 {
-	ReturnSettingsValueForWeapon( KEY_MIDAIR_MIN_POSTKILL_AIR_TIME, float );
+	ReturnSettingsValueForWeapon( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME, float );
 }
 
 // =====================================================================================================================================================================

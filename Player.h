@@ -52,7 +52,7 @@ struct kill_info_t
 	bool teamkill;
 	bool headshot;
 	bool noscope;
-	char midair;
+	char midair_status;
 	bool penetrated;
 	bool flickshot;
 	CSWeaponID weaponID;
@@ -108,7 +108,7 @@ public:
 		bool teamkill,
 		bool headshot,
 		bool noscope,
-		char midair,
+		char midair_status,
 		byte penetrated,
 		bool flickshot,
 		float distance,

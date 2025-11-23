@@ -1,4 +1,4 @@
-#include "Frag.h"
+Ôªø#include "Frag.h"
 #include "DemoParser.h"
 #include "Settings.h"
 #include "Weapons.h"
@@ -46,7 +46,7 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 		if( kill->headshot )
 			++num_headshots;
 
-		if( kill->flickshot || kill->midair != ON_GROUND || kill->noscope || kill->penetrated || kill->blind )
+		if( kill->flickshot || kill->midair_status != ON_GROUND || kill->noscope || kill->penetrated || kill->blind )
 			contains_special_kill = true;
 
 		const float distance_to_start = (kill->position - vecFragOrigin).Length();
@@ -229,9 +229,9 @@ void DemoParser::FindRoundFrags( void )
 
 			if( kill->flickshot )
 				type_flags |= FL_KILL_FLICKSHOT;
-			if( kill->midair == IN_AIR )
-				type_flags |= FL_KILL_MIDAIR;
-			else if( kill->midair == ON_LADDER )
+			if( kill->midair_status == JUMPSHOT )
+				type_flags |= FL_KILL_JUMPSHOT;
+			else if( kill->midair_status == LADDERSHOT )
 				type_flags |= FL_KILL_LADDERSHOT;
 			if( kill->noscope )
 				type_flags |= FL_KILL_NOSCOPE;
@@ -315,6 +315,27 @@ void frag_descriptor_t::GetStringRepresentation( char *buffer, size_t buffer_siz
 	{
 		strcat_s( buffer, buffer_size, "noscope " );
 	}
+
+	if( type_flags & FL_KILL_JUMPSHOT )
+	{
+		// Add in "shot" if nothing else comes after this
+		if( !(type_flags & FL_KILL_WALLBANG)
+		&& !(type_flags & FL_KILL_FLICKSHOT)
+		&& !FragIsCollat( type_flags )
+		&& (!write_hs || headshots != count) )
+		{
+			strcat_s( buffer, buffer_size, "jumpshot " );
+		}
+		else
+		{
+			strcat_s( buffer, buffer_size, "jump " );
+		}
+	}
+	else if( type_flags & FL_KILL_LADDERSHOT )
+	{
+		strcat_s( buffer, buffer_size, "laddershot " );
+	}
+
 	if( type_flags & FL_KILL_FLICKSHOT )
 	{
 		// Write angle
@@ -322,7 +343,7 @@ void frag_descriptor_t::GetStringRepresentation( char *buffer, size_t buffer_siz
 		{
 			int angle = GetRoundedFlickAngle();
 			char szAngle[8];
-			_snprintf_s( szAngle, sizeof(szAngle), sizeof(szAngle), "%dÅã ", angle );
+			_snprintf_s( szAngle, sizeof(szAngle), sizeof(szAngle), reinterpret_cast<const char *>( u8"%d¬∞ " ), angle );
 			strcat_s( buffer, buffer_size, szAngle );
 		}
 
@@ -336,24 +357,7 @@ void frag_descriptor_t::GetStringRepresentation( char *buffer, size_t buffer_siz
 			strcat_s( buffer, buffer_size, "flickshot " );
 		}
 	}
-	if( type_flags & FL_KILL_MIDAIR )
-	{
-		// Add in "kill" if nothing else comes after this
-		if( !(type_flags & FL_KILL_WALLBANG)
-			&& !FragIsCollat( type_flags )
-			&& (!write_hs || headshots != count) )
-		{
-			strcat_s( buffer, buffer_size, "mid-air kill " );
-		}
-		else
-		{
-			strcat_s( buffer, buffer_size, "mid-air " );
-		}
-	}
-	else if( type_flags & FL_KILL_LADDERSHOT )
-	{
-		strcat_s( buffer, buffer_size, "laddershot " );
-	}
+
 	if( type_flags & FL_KILL_WALLBANG )
 	{
 		strcat_s( buffer, buffer_size, "wallbang " );
@@ -767,12 +771,12 @@ void Frag::AddFragDescriptor( uint32 tick, unsigned short type_flags, short team
 		if( searchFlags )
 			break;
 
-		// Check for mid-air
-		searchFlags = type_flags & FL_KILL_MIDAIR;
+		// Check for jumpshot
+		searchFlags = type_flags & FL_KILL_JUMPSHOT;
 		if( searchFlags )
 			break;
 
-		// Check for laddershots
+		// Check for laddershot
 		searchFlags = type_flags & FL_KILL_LADDERSHOT;
 		if( searchFlags )
 			break;
