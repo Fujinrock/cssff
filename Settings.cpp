@@ -64,6 +64,7 @@ extern std::string g_BatchDirectory;
 #define KEY_WALLBANG_ANOTHER_KILL_MAX_DT		"wallbang_another_kill_max_delta_time"
 #define KEY_FLICKSHOT_MAX_DURATION				"flickshot_max_duration"
 #define KEY_FLICKSHOT_HEADSHOT_ONLY				"flickshot_headshot_only"
+#define KEY_FLICKSHOT_MIN_DISTANCE				"flickshot_min_distance"
 
 // Category names for settings
 #define CAT_NAME_GENERAL						"General"
@@ -198,6 +199,7 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_MIDAIR_MIN_DISTANCE_WB_MOD ].m_float = 0.5f;
 	general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int = 150;
 	general_settings[ KEY_FLICKSHOT_HEADSHOT_ONLY ].m_bool = false;
+	general_settings[ KEY_FLICKSHOT_MIN_DISTANCE ].m_float = 100.f;
 
 	m_iMaxFlickDuration = general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int;
 
@@ -206,13 +208,14 @@ SettingsManager::SettingsManager()
 
 // =====================================================================================================================================================================
 /**
- * Builds a filepath to a singular ini file found in the directory pointed to by g_BatchDirectory
- * @param outPath				string that will hold the built filepath
+ * Builds a filepath to a singular ini file found in the directory specified
+ * @param sDirectory			directory path to search in
+ * @param outPath				string that will hold the built filepath (only if file is found)
  * @return						false if failed to find a file or there were multiple ini files, true otherwise
  */
-bool GetSettingsFileFromBatchDirectory( std::string &outPath )
+bool GetSettingsFileFromDirectory( const std::string &sDirectory, std::string &outPath )
 {
-	std::string strSearchPath = g_BatchDirectory + "*.ini";
+	std::string strSearchPath = sDirectory + "*.ini";
 	std::string strFilename = "";
 
 	WIN32_FIND_DATAA data;
@@ -229,6 +232,12 @@ bool GetSettingsFileFromBatchDirectory( std::string &outPath )
 	{
 		if( !( data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
 		{
+			std::string sTemp = data.cFileName;
+
+			// Make sure it's actually an ini extension and doesn't just start with that
+			if( !FileHasExtension( sTemp, "ini" ) )
+				continue;
+
 			// If there are multiple settings files in the directory, the default file will be used
 			if( !strFilename.empty() )
 			{
@@ -237,14 +246,17 @@ bool GetSettingsFileFromBatchDirectory( std::string &outPath )
 				return false;
 			}
 
-			strFilename = data.cFileName;
+			strFilename = sTemp;
 		}
 	}
 	while( FindNextFileA( hFile, &data ) != 0 );
 
 	FindClose( hFile );
 
-	outPath = g_BatchDirectory + strFilename;
+	if( strFilename.empty() )
+		return false;
+
+	outPath = sDirectory + strFilename;
 
 	return true;
 }
@@ -263,7 +275,7 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 
 	if( !szSettingsFile )
 	{
-		if( !bBatchDirSupplied || !GetSettingsFileFromBatchDirectory( sConfigPath ) )
+		if( !bBatchDirSupplied || !GetSettingsFileFromDirectory( g_BatchDirectory, sConfigPath ) )
 		{
 			// Use default file if no file or batch directory with file was specified
 			sConfigPath = g_ProgramDirectory + DEFAULT_SETTINGS_FILE;
@@ -276,13 +288,24 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 
 	ifstream file( sConfigPath );
 
-	RemoveFileNameFolders( sConfigPath );
-
 	if( !file.is_open() )
 	{
-		printf( "Warning: Could not open settings file \"%s\" - using built-in default values!\n", sConfigPath.c_str() );
-		return;
+		// If the user wants to parse the demos in the program's folder or just dragged some demos onto the program,
+		// try opening any settings file we can find from the program folder
+		if( !szSettingsFile && !bBatchDirSupplied && GetSettingsFileFromDirectory( g_ProgramDirectory, sConfigPath ) )
+		{
+			file.open( sConfigPath );
+		}
+
+		if( !file.is_open() )
+		{
+			RemoveFileNameFolders( sConfigPath );
+			printf( "Warning: Could not open settings file \"%s\" - using built-in default values!\n", sConfigPath.c_str() );
+			return;
+		}
 	}
+
+	RemoveFileNameFolders( sConfigPath );
 
 	if( sConfigPath != DEFAULT_SETTINGS_FILE )
 	{
@@ -534,6 +557,10 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		else if( key == KEY_FLICKSHOT_HEADSHOT_ONLY )
 		{
 			SetKeyValueBool( KEY_FLICKSHOT_HEADSHOT_ONLY, value )
+		}
+		else if( key == KEY_FLICKSHOT_MIN_DISTANCE )
+		{
+			SetKeyValueFloat( KEY_FLICKSHOT_MIN_DISTANCE, value )
 		}
 		else
 		{
@@ -1004,8 +1031,11 @@ bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weap
 
 	if( type_flags & FL_KILL_FLICKSHOT )
 	{
-		if( ShouldTickFrag( KEY_TICK_FLICKSHOTS, KEY_FLICKSHOT_HEADSHOT_ONLY, bHeadshot ) )
-			return true;
+		if( distance >= GetFlickshotMinDistanceForWeapon( weapon ) )
+		{
+			if( ShouldTickFrag( KEY_TICK_FLICKSHOTS, KEY_FLICKSHOT_HEADSHOT_ONLY, bHeadshot ) )
+				return true;
+		}
 	}
 
 	if( type_flags & FL_KILL_WALLBANG )
@@ -1079,6 +1109,13 @@ int SettingsManager::GetMaxFlickshotDuration( void )
 int SettingsManager::GetFlickshotDurationForWeapon( CSWeaponID weapon )
 {
 	ReturnSettingsValueForWeapon( KEY_FLICKSHOT_MAX_DURATION, int );
+}
+
+// =====================================================================================================================================================================
+
+float SettingsManager::GetFlickshotMinDistanceForWeapon( CSWeaponID weapon )
+{
+	ReturnSettingsValueForWeapon( KEY_FLICKSHOT_MIN_DISTANCE, float );
 }
 
 // =====================================================================================================================================================================

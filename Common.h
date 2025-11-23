@@ -2,7 +2,7 @@
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.1.2"
+#define	CSSFF_NAME					"CSSFF v2.1.4"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_PROTOCOL				3			// 3 for all versions of CS:S
@@ -43,7 +43,7 @@ double Log2( double n );
 void TrimString( std::string &s );
 void RemoveFileExtension( std::string &filename );
 void RemoveFileNameFolders( std::string &filepath );
-bool FileHasExtension( const std::string &filename, const std::string &extension );
+bool FileHasExtension( const std::string &filename, const std::string &extension, bool allowPartial = false );
 bool IsValidDirectory( const char *szPath );
 
 // Utility from the current demo parser that other classes need as well

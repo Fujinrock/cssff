@@ -259,7 +259,7 @@ int main( int argc, char *argv[] )
 	{
 		const char *szArg = argv[ nArg ];
 
-		if( FileHasExtension( szArg, "dem" ) )
+		if( FileHasExtension( szArg, "dem", true ) )
 			s_DemosToParse.emplace_back( szArg );
 		else if( FileHasExtension( szArg, "ini" ) )
 			szSettingsArg = szArg;
@@ -318,9 +318,9 @@ int main( int argc, char *argv[] )
 	{
 		if( Settings()->BatchProcessingEnabled() && !bUnrecognizedArgs )
 		{
-			if( !FindDemosInFolder( g_BatchDirectory ) || s_DemosToParse.size() == 0 )
+			if( !FindDemosInFolder( g_BatchDirectory ) || s_DemosToParse.empty() )
 			{
-				printf( "%s: No demos to parse found in the current folder!\n", CSSFF_NAME );
+				printf( "%s: No demos to parse found in the %s folder!\n", CSSFF_NAME, szBatchDirArg ? "specified" : "current" );
 				system( "pause" );
 				return 0;
 			}

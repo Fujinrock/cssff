@@ -53,13 +53,13 @@ void RemoveFileNameFolders( std::string &filepath )
 		filepath.erase( 0, slash + 1 );
 }
 
-bool FileHasExtension( const std::string &filename, const std::string &extension )
+bool FileHasExtension( const std::string &filename, const std::string &extension, bool allowPartial )
 {
 	size_t pos = filename.find_last_of( '.' );
 
 	if( pos != std::string::npos )
 	{
-		if( filename.substr( pos+1 ) == extension )
+		if( filename.substr( pos+1, allowPartial ? extension.length() : std::string::npos ) == extension )
 			return true;
 	}
 

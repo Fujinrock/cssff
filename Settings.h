@@ -35,6 +35,7 @@ public:
 	// This returns the longest flick duration in milliseconds across all weapons and categories
 	int GetMaxFlickshotDuration( void );
 	int GetFlickshotDurationForWeapon( CSWeaponID weapon );
+	float GetFlickshotMinDistanceForWeapon( CSWeaponID weapon );
 
 	float GetMinPostKillAirTimeForWeapon( CSWeaponID weapon );
 
