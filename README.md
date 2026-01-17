@@ -107,6 +107,9 @@ The default settings file should be called "cssff_settings.ini" and it should be
 |5k_must_include_special_kill|boolean|Whether a 5k has to include a flickshot, jumpshot, noscope, wallbang or a flashed kill in order to be ticked|
 |4k_must_include_special_kill|boolean|Whether a 4k has to include a flickshot, jumpshot, noscope, wallbang or a flashed kill in order to be ticked|
 |3k_must_include_special_kill|boolean|Whether a 3k has to include a flickshot, jumpshot, noscope, wallbang or a flashed kill in order to be ticked|
+|5k_special_kill_extra_max_time|decimal|How many seconds each special kill should raise the maximum time for ticking 5 kills|
+|4k_special_kill_extra_max_time|decimal|How many seconds each special kill should raise the maximum time for ticking 4 kills|
+|3k_special_kill_extra_max_time|decimal|How many seconds each special kill should raise the maximum time for ticking 3 kills|
 |5k_min_headshots|integer|Minimum amount of headshots to tick a 5k|
 |4k_min_headshots|integer|Minimum amount of headshots to tick a 4k|
 |3k_min_headshots|integer|Minimum amount of headshots to tick a 3k|
@@ -114,12 +117,17 @@ The default settings file should be called "cssff_settings.ini" and it should be
 |triple_min_headshots|integer|Minimum amount of headshots to tick a triple|
 |quadro_min_headshots|integer|Minimum amount of headshots to tick a quadro|
 |penta_min_headshots|integer|Minimum amount of headshots to tick a penta|
+|special_double_ignores_min_hs|boolean|Whether minimum headshots should be ignored if the double was a flickshot, jumpshot, noscope, wallbang or done while flashed|
+|special_triple_ignores_min_hs|boolean|Whether minimum headshots should be ignored if the triple was a flickshot, jumpshot, noscope, wallbang or done while flashed|
+|special_quadro_ignores_min_hs|boolean|Whether minimum headshots should be ignored if the quadro was a flickshot, jumpshot, noscope, wallbang or done while flashed|
+|special_penta_ignores_min_hs|boolean|Whether minimum headshots count should be ignored if the penta was a flickshot, jumpshot, noscope, wallbang or done while flashed|
 |wallbang_headshot_only|boolean|Whether only headshot wallbangs should be ticked|
 |wallbang_require_another_kill|boolean|Whether a second (non-wallbang) kill must accompany a wallbang for it to be ticked|
 |wallbang_another_kill_max_delta_time|decimal|Maximum time in seconds that may pass between the wallbang and the other kill to tick it|
 |flickshot_headshot_only|boolean|Whether only headshot flicks should be ticked|
 |flickshot_min_distance|decimal|Victim's minimum distance from the fragger in order to tick a flickshot|
 |flickshot_max_duration|integer|Maximum flick duration in milliseconds (max 300)|
+|flickshot_min_angle_modifier|decimal|Flickshot minimum angle modifier (values above 1 increase the angle while values below 1 decrease it)|
 |jumpshot_min_post_kill_air_time|decimal|Time in seconds that the fragger has to stay in air after a jumpshot in order to tick it|
 |jumpshot_min_distance|decimal|Victim's minimum distance from the fragger in order to tick a jumpshot|
 |jumpshot_min_distance_hs_modifier|decimal|Jumpshot minimum distance modifier used for headshots (values below 1 decrease the distance while values above 1 increase it)|
@@ -135,7 +143,8 @@ The following settings fields should only be set in the general category, and ar
 |dump_to_file|boolean|Whether to dump frags, warnings and errors to a text file|
 |enable_batch_processing|boolean|Enable/disable batch processing|
 |write_output_to_demo_directory|boolean|Whether the output file should be written to the folder where the processed demo/batch was or to the executable folder|
-|tick_frags_vs_bots|boolean|Whether frags against bots are ticked or not (frags by bots are always ticked)|
+|tick_frags_vs_bots|boolean|Whether frags against bots are ticked or not|
+|tick_frags_by_bots|boolean|Whether frags by bots are ticked or not|
 
 ---
 ### Batch processing
