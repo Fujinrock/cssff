@@ -1,4 +1,4 @@
-#include "Settings.h"
+﻿#include "Settings.h"
 #include "Common.h"
 #include "Weapons.h"
 #include "Frag.h"
@@ -33,6 +33,7 @@ extern std::string g_BatchDirectory;
 #define KEY_TICK_FLICKSHOTS						"tick_flickshots"
 #define KEY_TICK_WALLBANGS						"tick_wallbangs"
 #define KEY_TICK_FRAGS_VS_BOTS					"tick_frags_vs_bots"
+#define KEY_TICK_FRAGS_BY_BOTS					"tick_frags_by_bots"
 #define KEY_5K_MAX_TIME							"5k_max_time"
 #define KEY_4K_MAX_TIME							"4k_max_time"
 #define KEY_3K_MAX_TIME							"3k_max_time"
@@ -48,10 +49,17 @@ extern std::string g_BatchDirectory;
 #define KEY_5K_MUST_INCLUDE_SP_KILL				"5k_must_include_special_kill"
 #define KEY_4K_MUST_INCLUDE_SP_KILL				"4k_must_include_special_kill"
 #define KEY_3K_MUST_INCLUDE_SP_KILL				"3k_must_include_special_kill"
+#define KEY_5K_SP_KILL_EXTRA_MAX_TIME			"5k_special_kill_extra_max_time"
+#define KEY_4K_SP_KILL_EXTRA_MAX_TIME			"4k_special_kill_extra_max_time"
+#define KEY_3K_SP_KILL_EXTRA_MAX_TIME			"3k_special_kill_extra_max_time"
 #define KEY_DOUBLE_MIN_HEADSHOTS				"double_min_headshots"
 #define KEY_TRIPLE_MIN_HEADSHOTS				"triple_min_headshots"
 #define KEY_QUADRO_MIN_HEADSHOTS				"quadro_min_headshots"
 #define KEY_PENTA_MIN_HEADSHOTS					"penta_min_headshots"
+#define KEY_SP_DOUBLE_IGNORES_MIN_HS			"special_double_ignores_min_hs"
+#define KEY_SP_TRIPLE_IGNORES_MIN_HS			"special_triple_ignores_min_hs"
+#define KEY_SP_QUADRO_IGNORES_MIN_HS			"special_quadro_ignores_min_hs"
+#define KEY_SP_PENTA_IGNORES_MIN_HS				"special_penta_ignores_min_hs"
 #define KEY_NOSCOPE_MIN_DISTANCE				"noscope_min_distance"
 #define KEY_NOSCOPE_MIN_DISTANCE_HS_MOD			"noscope_min_distance_hs_modifier"
 #define KEY_NOSCOPE_MIN_DISTANCE_WB_MOD			"noscope_min_distance_wb_modifier"
@@ -65,6 +73,7 @@ extern std::string g_BatchDirectory;
 #define KEY_FLICKSHOT_MAX_DURATION				"flickshot_max_duration"
 #define KEY_FLICKSHOT_HEADSHOT_ONLY				"flickshot_headshot_only"
 #define KEY_FLICKSHOT_MIN_DISTANCE				"flickshot_min_distance"
+#define KEY_FLICKSHOT_MIN_ANGLE_MOD				"flickshot_min_angle_modifier"
 
 // Category names for settings
 #define CAT_NAME_GENERAL						"General"
@@ -81,6 +90,9 @@ extern std::string g_BatchDirectory;
 #define SettingEnabled( value )		(value == "1" || !_stricmp(value.c_str(), "true"))
 #define SettingDisabled( value )	(value == "0" || !_stricmp(value.c_str(), "false"))
 
+#define PrintInvalidValueWarning( key, value, type )\
+	printf("Warning: key \"%s\" has invalid value \"%s\" (expected %s)\n", key, value.c_str(), #type)
+
 // Use these macros in LoadSettings
 #define SetKeyValueBool( key, value )\
 	int __nValue = -1;\
@@ -92,19 +104,19 @@ extern std::string g_BatchDirectory;
 		for(size_t i=0;i<current_categories.size();++i)\
 			m_weaponSettings[ current_categories[i] ][ key ].m_bool = __nValue == 1;\
 	}\
-	else void(0);
+	else { PrintInvalidValueWarning(key, value, boolean); }
 
 #define SetKeyValueFloat( key, value )\
 	try { float __fValue = stof( value );\
 			for(size_t i=0;i<current_categories.size();++i)\
 				m_weaponSettings[ current_categories[i] ][ key ].m_float = __fValue; }\
-		catch( ... ) { continue; }
+	catch( ... ) { PrintInvalidValueWarning(key, value, decimal); }
 
 #define SetKeyValueInt( key, value )\
 	try { int __nValue = stoi( value );\
 			for(size_t i=0;i<current_categories.size();++i)\
 				m_weaponSettings[ current_categories[i] ][ key ].m_int = __nValue; }\
-		catch( ... ) { continue; }
+	catch( ... ) { PrintInvalidValueWarning(key, value, integer); }
 
 // Macro for a function that returns the value for a settings field for a specific weapon
 // Checks for weapon settings, weapon category settings and finally general settings
@@ -171,6 +183,7 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_WALLBANG_REQUIRE_ANOTHER_KILL ].m_bool = true;
 	general_settings[ KEY_WALLBANG_ANOTHER_KILL_MAX_DT ].m_float = 2.0;
 	general_settings[ KEY_TICK_FRAGS_VS_BOTS ].m_bool = false;
+	general_settings[ KEY_TICK_FRAGS_BY_BOTS ].m_bool = true;
 	general_settings[ KEY_5K_MAX_TIME ].m_float = -1.f;
 	general_settings[ KEY_4K_MAX_TIME ].m_float = 10.f;
 	general_settings[ KEY_3K_MAX_TIME ].m_float = 2.f;
@@ -186,10 +199,17 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_5K_MUST_INCLUDE_SP_KILL ].m_bool = false;
 	general_settings[ KEY_4K_MUST_INCLUDE_SP_KILL ].m_bool = false;
 	general_settings[ KEY_3K_MUST_INCLUDE_SP_KILL ].m_bool = false;
+	general_settings[ KEY_5K_SP_KILL_EXTRA_MAX_TIME ].m_float = 5.f;
+	general_settings[ KEY_4K_SP_KILL_EXTRA_MAX_TIME ].m_float = 2.f;
+	general_settings[ KEY_3K_SP_KILL_EXTRA_MAX_TIME ].m_float = 0.5;
 	general_settings[ KEY_DOUBLE_MIN_HEADSHOTS ].m_int = 1;
 	general_settings[ KEY_TRIPLE_MIN_HEADSHOTS ].m_int = 0;
 	general_settings[ KEY_QUADRO_MIN_HEADSHOTS ].m_int = 0;
 	general_settings[ KEY_PENTA_MIN_HEADSHOTS ].m_int = 0;
+	general_settings[ KEY_SP_DOUBLE_IGNORES_MIN_HS ].m_bool = true;
+	general_settings[ KEY_SP_TRIPLE_IGNORES_MIN_HS ].m_bool = true;
+	general_settings[ KEY_SP_QUADRO_IGNORES_MIN_HS ].m_bool = true;
+	general_settings[ KEY_SP_PENTA_IGNORES_MIN_HS ].m_bool = true;
 	general_settings[ KEY_NOSCOPE_MIN_DISTANCE ].m_float = 1000.f;
 	general_settings[ KEY_NOSCOPE_MIN_DISTANCE_HS_MOD ].m_float = 0.5f;
 	general_settings[ KEY_NOSCOPE_MIN_DISTANCE_WB_MOD ].m_float = 0.5f;
@@ -200,6 +220,7 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int = 150;
 	general_settings[ KEY_FLICKSHOT_HEADSHOT_ONLY ].m_bool = false;
 	general_settings[ KEY_FLICKSHOT_MIN_DISTANCE ].m_float = 100.f;
+	general_settings[ KEY_FLICKSHOT_MIN_ANGLE_MOD ].m_float = 1.f;
 
 	m_iMaxFlickDuration = general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int;
 
@@ -446,6 +467,10 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		{
 			SetKeyValueBool( KEY_TICK_FRAGS_VS_BOTS, value )
 		}
+		else if( key == KEY_TICK_FRAGS_BY_BOTS )
+		{
+			SetKeyValueBool( KEY_TICK_FRAGS_BY_BOTS, value )
+		}
 		else if( key == KEY_5K_MAX_TIME )
 		{
 			SetKeyValueFloat( KEY_5K_MAX_TIME, value )
@@ -506,6 +531,18 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		{
 			SetKeyValueBool( KEY_3K_MUST_INCLUDE_SP_KILL, value )
 		}
+		else if( key == KEY_5K_SP_KILL_EXTRA_MAX_TIME )
+		{
+			SetKeyValueFloat( KEY_5K_SP_KILL_EXTRA_MAX_TIME, value )
+		}
+		else if( key == KEY_4K_SP_KILL_EXTRA_MAX_TIME )
+		{
+			SetKeyValueFloat( KEY_4K_SP_KILL_EXTRA_MAX_TIME, value )
+		}
+		else if( key == KEY_3K_SP_KILL_EXTRA_MAX_TIME )
+		{
+			SetKeyValueFloat( KEY_3K_SP_KILL_EXTRA_MAX_TIME, value )
+		}
 		else if( key == KEY_DOUBLE_MIN_HEADSHOTS )
 		{
 			SetKeyValueInt( KEY_DOUBLE_MIN_HEADSHOTS, value )
@@ -521,6 +558,22 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		else if( key == KEY_PENTA_MIN_HEADSHOTS )
 		{
 			SetKeyValueInt( KEY_PENTA_MIN_HEADSHOTS, value )
+		}
+		else if( key == KEY_SP_DOUBLE_IGNORES_MIN_HS )
+		{
+			SetKeyValueBool( KEY_SP_DOUBLE_IGNORES_MIN_HS, value )
+		}
+		else if( key == KEY_SP_TRIPLE_IGNORES_MIN_HS )
+		{
+			SetKeyValueBool( KEY_SP_TRIPLE_IGNORES_MIN_HS, value )
+		}
+		else if( key == KEY_SP_QUADRO_IGNORES_MIN_HS )
+		{
+			SetKeyValueBool( KEY_SP_QUADRO_IGNORES_MIN_HS, value )
+		}
+		else if( key == KEY_SP_PENTA_IGNORES_MIN_HS )
+		{
+			SetKeyValueBool( KEY_SP_PENTA_IGNORES_MIN_HS, value )
 		}
 		else if( key == KEY_NOSCOPE_MIN_DISTANCE )
 		{
@@ -562,6 +615,10 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		{
 			SetKeyValueFloat( KEY_FLICKSHOT_MIN_DISTANCE, value )
 		}
+		else if( key == KEY_FLICKSHOT_MIN_ANGLE_MOD )
+		{
+			SetKeyValueFloat( KEY_FLICKSHOT_MIN_ANGLE_MOD, value )
+		}
 		else
 		{
 			printf( "Warning: Invalid key \"%s\" in settings file!\n", key.c_str() );
@@ -596,7 +653,7 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 
 // =====================================================================================================================================================================
 
-bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapons, short num_weapons, float frag_time, float farthest_distance, short headshots, bool contains_sp_kills, bool &outIsStationary )
+bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapons, short num_weapons, float frag_time, float farthest_distance, short headshots, short num_special_kills, bool &outIsStationary )
 {
 	CSWeaponID weaponID;
 	CSWeaponCategory weaponCategory;
@@ -623,7 +680,8 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		stationary_max_range_key,
 		max_time_key,
 		min_hs_key,
-		sp_kill_key;
+		require_sp_kill_key,
+		sp_kill_extra_time_key;
 
 	switch( type )
 	{
@@ -634,7 +692,8 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 			stationary_max_range_key =	KEY_SLOW_5K_MAX_RANGE;
 			max_time_key =				KEY_5K_MAX_TIME;
 			min_hs_key =				KEY_5K_MIN_HEADSHOTS;
-			sp_kill_key =				KEY_5K_MUST_INCLUDE_SP_KILL;
+			require_sp_kill_key =		KEY_5K_MUST_INCLUDE_SP_KILL;
+			sp_kill_extra_time_key =	KEY_5K_SP_KILL_EXTRA_MAX_TIME;
 		}
 		break;
 		case FRAG_4K:
@@ -644,7 +703,8 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 			stationary_max_range_key =	KEY_SLOW_4K_MAX_RANGE;
 			max_time_key =				KEY_4K_MAX_TIME;
 			min_hs_key =				KEY_4K_MIN_HEADSHOTS;
-			sp_kill_key =				KEY_4K_MUST_INCLUDE_SP_KILL;
+			require_sp_kill_key =		KEY_4K_MUST_INCLUDE_SP_KILL;
+			sp_kill_extra_time_key =	KEY_4K_SP_KILL_EXTRA_MAX_TIME;
 		}
 		break;
 		case FRAG_3K:
@@ -654,7 +714,8 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 			stationary_max_range_key =	KEY_SLOW_3K_MAX_RANGE;
 			max_time_key =				KEY_3K_MAX_TIME;
 			min_hs_key =				KEY_3K_MIN_HEADSHOTS;
-			sp_kill_key =				KEY_3K_MUST_INCLUDE_SP_KILL;
+			require_sp_kill_key =		KEY_3K_MUST_INCLUDE_SP_KILL;
+			sp_kill_extra_time_key =	KEY_3K_SP_KILL_EXTRA_MAX_TIME;
 		}
 		break;
 		default:
@@ -733,6 +794,23 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		fMaxTime = general_settings[ max_time_key ].m_float;
 	}
 
+	// Extra max time key
+	if( num_special_kills > 0 )
+	{
+		if( weapon_settings && weapon_settings->find( sp_kill_extra_time_key ) != weapon_settings->end() )
+		{
+			fMaxTime += (*weapon_settings)[ sp_kill_extra_time_key ].m_float * num_special_kills;
+		}
+		else if( category_settings.find( sp_kill_extra_time_key ) != category_settings.end() )
+		{
+			fMaxTime += category_settings[ sp_kill_extra_time_key ].m_float * num_special_kills;
+		}
+		else
+		{
+			fMaxTime += general_settings[ sp_kill_extra_time_key ].m_float * num_special_kills;
+		}
+	}
+
 	if( frag_time > fMaxTime )
 	{
 		if( !bTickStationary || !bIsStationary )
@@ -763,21 +841,21 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 				return false;
 		}
 
-		if( !contains_sp_kills )
+		if( num_special_kills == 0 )
 		{
-			if( weapon_settings && weapon_settings->find( sp_kill_key ) != weapon_settings->end() )
+			if( weapon_settings && weapon_settings->find( require_sp_kill_key ) != weapon_settings->end() )
 			{
-				if( (*weapon_settings)[ sp_kill_key ].m_bool )
+				if( (*weapon_settings)[ require_sp_kill_key ].m_bool )
 					return false;
 			}
-			else if( category_settings.find( sp_kill_key ) != category_settings.end() )
+			else if( category_settings.find( require_sp_kill_key ) != category_settings.end() )
 			{
-				if( category_settings[ sp_kill_key ].m_bool )
+				if( category_settings[ require_sp_kill_key ].m_bool )
 					return false;
 			}
 			else
 			{
-				if( general_settings[ sp_kill_key ].m_bool )
+				if( general_settings[ require_sp_kill_key ].m_bool )
 					return false;
 			}
 		}
@@ -912,12 +990,33 @@ bool SettingsManager::ShouldTickFrag( Key tick_key, Key min_dist_key, Key min_di
 
 // =====================================================================================================================================================================
 
-bool SettingsManager::ShouldTickCollat( CSWeaponCategory category, Key tick_key, Key min_hs_key, short headshots )
+bool SettingsManager::ShouldTickCollat( CSWeaponCategory category, Key tick_key, Key min_hs_key, short headshots, Key ignore_min_hs_key, bool bMayIgnoreMinHs )
 {
 	bool bShouldTick = ShouldTickFrag( tick_key );
 
 	if( bShouldTick && category != CATEGORY_GRENADE )
 	{
+		// Check if we can ignore minimum headshots
+		if( bMayIgnoreMinHs )
+		{
+			if( m_fcats.weapon_settings && m_fcats.weapon_settings->find( ignore_min_hs_key ) != m_fcats.weapon_settings->end() )
+			{
+				if( (*m_fcats.weapon_settings)[ ignore_min_hs_key ].m_bool )
+					return bShouldTick;
+			}
+			else if( m_fcats.category_settings->find( ignore_min_hs_key ) != m_fcats.category_settings->end() )
+			{
+				if( (*m_fcats.category_settings)[ ignore_min_hs_key ].m_bool )
+					return bShouldTick;
+			}
+			else
+			{
+				if( GetGeneralSettings()[ ignore_min_hs_key ].m_bool )
+					return bShouldTick;
+			}
+		}
+
+		// Minimum headshots check
 		if( m_fcats.weapon_settings && m_fcats.weapon_settings->find( min_hs_key ) != m_fcats.weapon_settings->end() )
 		{
 			if( (*m_fcats.weapon_settings)[ min_hs_key ].m_int > headshots )
@@ -998,28 +1097,29 @@ bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weap
 
 	bool bHeadshot = headshots > 0;
 	bool bWallbang = (type_flags & FL_KILL_WALLBANG) != 0;
+	bool bHasSpecialFlags = (type_flags & ~MASK_COLLATS) != 0;
 
 	if( type_flags & FL_KILL_DOUBLE )
 	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_DOUBLES, KEY_DOUBLE_MIN_HEADSHOTS, headshots ) )
+		if( ShouldTickCollat( weaponCategory, KEY_TICK_DOUBLES, KEY_DOUBLE_MIN_HEADSHOTS, headshots, KEY_SP_DOUBLE_IGNORES_MIN_HS, bHasSpecialFlags ) )
 			return true;
 	}
 	
 	if( type_flags & FL_KILL_TRIPLE )
 	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_TRIPLES, KEY_TRIPLE_MIN_HEADSHOTS, headshots ) )
+		if( ShouldTickCollat( weaponCategory, KEY_TICK_TRIPLES, KEY_TRIPLE_MIN_HEADSHOTS, headshots, KEY_SP_TRIPLE_IGNORES_MIN_HS, bHasSpecialFlags ) )
 			return true;
 	}
 	
 	if( type_flags & FL_KILL_QUADRO )
 	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_QUADROS, KEY_QUADRO_MIN_HEADSHOTS, headshots ) )
+		if( ShouldTickCollat( weaponCategory, KEY_TICK_QUADROS, KEY_QUADRO_MIN_HEADSHOTS, headshots, KEY_SP_QUADRO_IGNORES_MIN_HS, bHasSpecialFlags ) )
 			return true;
 	}
 	
 	if( type_flags & FL_KILL_PENTA )
 	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_PENTAS, KEY_PENTA_MIN_HEADSHOTS, headshots ) )
+		if( ShouldTickCollat( weaponCategory, KEY_TICK_PENTAS, KEY_PENTA_MIN_HEADSHOTS, headshots, KEY_SP_PENTA_IGNORES_MIN_HS, bHasSpecialFlags ) )
 			return true;
 	}
 
@@ -1099,6 +1199,13 @@ bool SettingsManager::ShouldTickFragsVsBots( void )
 
 // =====================================================================================================================================================================
 
+bool SettingsManager::ShouldTickFragsByBots( void )
+{
+	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_TICK_FRAGS_BY_BOTS ].m_bool;
+}
+
+// =====================================================================================================================================================================
+
 int SettingsManager::GetMaxFlickshotDuration( void )
 {
 	return m_iMaxFlickDuration;
@@ -1116,6 +1223,13 @@ int SettingsManager::GetFlickshotDurationForWeapon( CSWeaponID weapon )
 float SettingsManager::GetFlickshotMinDistanceForWeapon( CSWeaponID weapon )
 {
 	ReturnSettingsValueForWeapon( KEY_FLICKSHOT_MIN_DISTANCE, float );
+}
+
+// =====================================================================================================================================================================
+
+float SettingsManager::GetFlickshotMinAngleModForWeapon( CSWeaponID weapon )
+{
+	ReturnSettingsValueForWeapon( KEY_FLICKSHOT_MIN_ANGLE_MOD, float );
 }
 
 // =====================================================================================================================================================================

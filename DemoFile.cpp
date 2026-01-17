@@ -1,4 +1,4 @@
-#include "DemoFile.h"
+﻿#include "DemoFile.h"
 #include "Settings.h"
 #include <fstream>
 #include <assert.h>
@@ -60,6 +60,27 @@ void DemoFile::CheckValidity( void )
 
 	demoheader_t *hdr = (demoheader_t *)m_filebuffer;
 
+	// Check if it's a 1.6/GoldSrc demo
+	if( !strcmp( hdr->demofilestamp, DEMO_HEADER_ID_GOLDSRC ) )
+	{
+		// In GoldSrc, the demo header doesn't contain servername and clientname fields,
+		// so the gamedirectory is read into clientname on the Source demo header
+		if( !strcmp( hdr->clientname, CS_GAMEDIR ) )
+			m_error = CS_DEMO;
+		else
+			m_error = GOLDSRC_DEMO;
+
+		return;
+	}
+
+	// Check if it's a CS:GO demo
+	if( !strcmp( hdr->gamedirectory, CSGO_GAMEDIR ) )
+	{
+		m_error = CSGO_DEMO;
+		return;
+	}
+
+	// Now check if it's a valid v34 demo
 	if( strcmp( hdr->demofilestamp, DEMO_HEADER_ID ) )
 	{
 		m_error = INVALID_HDR_ID;
@@ -72,7 +93,7 @@ void DemoFile::CheckValidity( void )
 		return;
 	}
 
-	if( strcmp( hdr->gamedirectory, CSS_GAMEDIR ) )
+	if( strcmp( hdr->gamedirectory, CS_GAMEDIR ) )
 	{
 		m_error = INVALID_GAMEDIR;
 		return;

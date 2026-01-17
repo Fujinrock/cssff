@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameEvents.h"
 #include "DemoFile.h"
@@ -138,7 +138,7 @@ private:
 	void HandlePlayerSpawnEvent( bf_read &reader, const GameEvent &event );
 	void HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event );
 	void HandlePlayerDisconnectEvent( bf_read &reader, const GameEvent &event );
-	void HandleRoundStartEvent( bf_read &reader, const GameEvent &event );
+	void OnRoundStartEvent( void );
 
 
 	// =============================================================================================================

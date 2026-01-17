@@ -31,7 +31,7 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 	CSWeaponID weapons[ multi_kill_frag_descriptor_t::FRAG_MAX_WEAPONS ];
 	short num_weapons = 0;
 	short num_headshots = 0;
-	bool contains_special_kill = false;
+	short num_special_kills = 0;
 
 	float farthest_kill_distance = -1.f;
 	Vector vecFragOrigin = kills[ cur_kill_idx - min_frag_kills ]->position;
@@ -47,7 +47,7 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 			++num_headshots;
 
 		if( kill->flickshot || kill->midair_status != ON_GROUND || kill->noscope || kill->penetrated || kill->blind )
-			contains_special_kill = true;
+			++num_special_kills;
 
 		const float distance_to_start = (kill->position - vecFragOrigin).Length();
 
@@ -57,7 +57,7 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 
 	bool bIsStationary = false;
 
-	if( !Settings()->ShouldTickFrag( frag_type, weapons, num_weapons, frag_time, farthest_kill_distance, num_headshots, contains_special_kill, bIsStationary ) )
+	if( !Settings()->ShouldTickFrag( frag_type, weapons, num_weapons, frag_time, farthest_kill_distance, num_headshots, num_special_kills, bIsStationary ) )
 		return false;
 
 	return frag.AddMultiKillFragDescriptor( frag_type, weapons, num_weapons, start_tick, end_tick, num_headshots, bIsStationary );
@@ -255,7 +255,7 @@ void DemoParser::FindRoundFrags( void )
 		if( player_frag.IsValidFrag() ) // Were there any actions to save?
 		{
 			m_Frags.push_back( player_frag );
-			(m_Frags.end() - 1)->SetPlayername( p->name );
+			m_Frags.back().SetPlayername(p->name);
 		}
 	}
 }
@@ -700,7 +700,7 @@ bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID 
 		}
 		else // Existing type is the same as the old type
 		{
-			// Is the new frag faster? if so, tick it
+			// Is the new frag faster? If so, tick it
 			if( m_multiKillDescriptor.frag_length > frag_length )
 			{
 				m_multiKillDescriptor.Reset();

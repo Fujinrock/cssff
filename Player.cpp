@@ -1,4 +1,4 @@
-#include "Player.h"
+﻿#include "Player.h"
 #include "DemoParser.h"
 #include "Weapons.h"
 #include "Settings.h"
@@ -188,7 +188,7 @@ Player *DemoParser::FindPlayerByUserId( int userId )
 typedef char axis_t;
 enum { PITCH, YAW };
 
-bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, const std::list< angle_info_t > &angles, float *pFlickAmount = nullptr )
+bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, float fMinAngleMod, const std::list< angle_info_t > &angles, float *pFlickAmount = nullptr )
 {
 	auto it = angles.begin();
 
@@ -206,7 +206,7 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 	}
 
 	float fFlickshotAbsoluteMinAngle;		// Minimum angle can't be less than this
-	float fFlickshotAbsoluteMaxMinAngle;	// Maximum angle can't be more than this
+	float fFlickshotAbsoluteMaxMinAngle;	// Minimum angle can't be more than this
 	float fMinFlickAngle;					// The minimum angle delta for this to be a flick
 	float fFlickBaseAngle;
 	int iLog2Multiplier;
@@ -234,7 +234,7 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 	}
 
 	// Distance scaling of min angle
-	fMinFlickAngle = fFlickBaseAngle - (float)Log2( fDistance/7.5f ) * iLog2Multiplier;
+	fMinFlickAngle = (fFlickBaseAngle - (float)Log2( fDistance/7.5f ) * iLog2Multiplier) * fMinAngleMod;
 
 	// Clamp min angle
 	if( fMinFlickAngle < fFlickshotAbsoluteMinAngle )
@@ -307,6 +307,7 @@ bool KillIsFlickshot( const Player *player, kill_info_t &kill )
 		return false;
 
 	const int flick_duration_ms = Settings()->GetFlickshotDurationForWeapon( kill.weaponID );
+	const float min_angle_mod = Settings()->GetFlickshotMinAngleModForWeapon( kill.weaponID );
 
 	if( flick_duration_ms <= 0 )
 		return false;
@@ -315,10 +316,10 @@ bool KillIsFlickshot( const Player *player, kill_info_t &kill )
 	int flick_ticks = (int)ceil( GetTickRate() * (flick_duration_ms / 1000.f) );
 
 	// Check on both axes
-	if( AngleDeltaIsFlickOnAxis( YAW, flick_ticks, kill.distance, player->viewangles, &kill.flickangle ) )
+	if( AngleDeltaIsFlickOnAxis( YAW, flick_ticks, kill.distance, min_angle_mod, player->viewangles, &kill.flickangle ) )
 		return true;
 
-	if( AngleDeltaIsFlickOnAxis( PITCH, flick_ticks, kill.distance, player->viewangles, &kill.flickangle ) )
+	if( AngleDeltaIsFlickOnAxis( PITCH, flick_ticks, kill.distance, min_angle_mod, player->viewangles, &kill.flickangle ) )
 		return true;
 
 	return false;

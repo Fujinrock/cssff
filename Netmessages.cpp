@@ -1,4 +1,4 @@
-#include "Netmessages.h"
+﻿#include "Netmessages.h"
 #include "DemoParser.h"
 #include "Errors.h"
 #include "Player.h"
@@ -176,6 +176,8 @@ void DemoParser::HandleSVCClassInfo( bf_read &reader )
 	bool createonclient = reader.ReadOneBit();
 	if( !createonclient )
 	{
+		throw ParsingError_t( "class info not created on client" );
+
 		while( num-- > 0 )
 		{
 			int classid = 0;

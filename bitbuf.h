@@ -1,4 +1,4 @@
-//====== Copyright (c) 2014, Valve Corporation, All rights reserved. ========//
+﻿//====== Copyright (c) 2014, Valve Corporation, All rights reserved. ========//
 //
 // Redistribution and use in source and binary forms, with or without 
 // modification, are permitted provided that the following conditions are met:
@@ -22,7 +22,7 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 //===========================================================================//
 
-//========= Copyright � 1996-2005, Valve Corporation, All rights reserved. ============//
+//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //

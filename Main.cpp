@@ -211,7 +211,7 @@ void HandleDemoError( const DemoFile &demo )
 		}
 		case INVALID_GAMEDIR:
 		{
-			error = std::format( "game directory \"{}\" is invalid - expected \"{}\"", hdr->gamedirectory, CSS_GAMEDIR );
+			error = std::format( "game directory \"{}\" is invalid - expected \"{}\"", hdr->gamedirectory, CS_GAMEDIR );
 			break;
 		}
 		case INVALID_NET_PROTOCOL:
@@ -225,6 +225,21 @@ void HandleDemoError( const DemoFile &demo )
 				error = std::format( "network protocol {} is invalid - expected {}", hdr->networkprotocol, NETWORK_PROTOCOL_V34 );
 			}
 
+			break;
+		}
+		case CS_DEMO:
+		{
+			error = std::format( "CS 1.6 demo - unsupported" );
+			break;
+		}
+		case GOLDSRC_DEMO:
+		{
+			error = std::format( "GoldSrc demo - unsupported" );
+			break;
+		}
+		case CSGO_DEMO:
+		{
+			error = std::format( "CS:GO demo - unsupported" );
 			break;
 		}
 	}

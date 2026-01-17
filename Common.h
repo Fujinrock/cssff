@@ -2,14 +2,16 @@
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.1.5"
+#define	CSSFF_NAME					"CSSFF v2.1.8"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
+#define DEMO_HEADER_ID_GOLDSRC		"HLDEMO"
 #define DEMO_PROTOCOL				3			// 3 for all versions of CS:S
 #define NETWORK_PROTOCOL_V34		7			// Always 7 in CS:S v34
 #define NETWORK_PROTOCOL_NEW_MIN	14			// v77 minimum version
 #define NETWORK_PROTOCOL_NEW_MAX	24			// Steam version, but unfortunately v77 had this version too
-#define CSS_GAMEDIR					"cstrike"
+#define CS_GAMEDIR					"cstrike"	// Applies to CS:S and 1.6
+#define CSGO_GAMEDIR				"csgo"		// For error messages
 
 #define	FL_ONGROUND					1
 #define MOVETYPE_LADDER				9

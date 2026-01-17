@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common.h"
 
@@ -66,6 +66,10 @@ enum DemoError
 	INVALID_DEM_PROTOCOL,
 	INVALID_NET_PROTOCOL,
 	INVALID_GAMEDIR,
+	// More specific errors for more useful error messages
+	CS_DEMO,				///< CS 1.6 demo
+	GOLDSRC_DEMO,			///< Other GoldSrc demo
+	CSGO_DEMO,				///< CS:GO demo
 };
 
 /**

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <map>
 #include <string>
@@ -18,7 +18,7 @@ public:
 
 	// Checks if the multi-kill frag should be ticked for the given weapons
 	// Also checks if the frag is fast enough to be ticked or stationary
-	bool ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapons, short num_weapons, float frag_time, float farthest_distance, short headshots, bool contains_sp_kills, bool &outIsStationary );
+	bool ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapons, short num_weapons, float frag_time, float farthest_distance, short headshots, short num_special_kills, bool &outIsStationary );
 
 	// Check if the flags indicate any frags that should be ticked for the given weapon
 	// Also checks for minimum distance, minimum headshots etc.
@@ -31,11 +31,13 @@ public:
 	bool WriteOutputToDemoDirectory( void );
 
 	bool ShouldTickFragsVsBots( void );
+	bool ShouldTickFragsByBots( void );
 
 	// This returns the longest flick duration in milliseconds across all weapons and categories
 	int GetMaxFlickshotDuration( void );
 	int GetFlickshotDurationForWeapon( CSWeaponID weapon );
 	float GetFlickshotMinDistanceForWeapon( CSWeaponID weapon );
+	float GetFlickshotMinAngleModForWeapon( CSWeaponID weapon );
 
 	float GetMinPostKillAirTimeForWeapon( CSWeaponID weapon );
 
@@ -49,7 +51,7 @@ private:
 	bool ShouldTickFrag( Key tick_key );
 	bool ShouldTickFrag( Key tick_key, Key only_hs_key, bool bIsHeadshot );
 	bool ShouldTickFrag( Key tick_key, Key min_dist_key, Key min_dist_hs_mod_key, Key min_dist_wb_mod_key, float fDistance, bool bIsHeadshot, bool bIsWallbang );
-	bool ShouldTickCollat( CSWeaponCategory category, Key tick_key, Key min_hs_key, short headshots );
+	bool ShouldTickCollat( CSWeaponCategory category, Key tick_key, Key min_hs_key, short headshots, Key ignore_min_hs_key, bool bMayIgnoreMinHs );
 	bool WallbangIsCloseToAnotherKill( CSWeaponID weapon, float time_to_closest_kill );
 
 	union setting_value

@@ -1,4 +1,4 @@
-#include "GameEvents.h"
+﻿#include "GameEvents.h"
 #include "DemoParser.h"
 #include "Entities.h"
 #include "Errors.h"
@@ -157,7 +157,7 @@ void DemoParser::HandleGameEvent( bf_read &reader )
 	}
 	else if( strcmp( name, "round_start" ) == 0 )
 	{
-		HandleRoundStartEvent( reader, event );
+		OnRoundStartEvent();
 	}
 	else if( strcmp( name, "player_disconnect" ) == 0 )
 	{
@@ -217,8 +217,6 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 	int fields = event.GetFieldCount();
 
-	char *attackerName;
-	char *victimName;
 	char weaponName[ 24 ] = "unknown";
 	bool headshot = false;
 	bool noscope = false;		// This has a field in Clientmod, but can be checked from ent data, too
@@ -237,17 +235,10 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 			if( !pVictim )
 				throw ParsingError_t( "victim info not found in HandlePlayerDeathEvent" );
-
-			victimName = pVictim->name;
 		}
 		else if( strcmp( field.field_name, "attacker" ) == 0 )
 		{
 			pAttacker = FindPlayerByUserId( reader.ReadShort() );
-
-			if( pAttacker ) // Might not be found on suicides/deaths by world
-			{
-				attackerName = pAttacker->name;
-			}
 		}
 		else if( strcmp( field.field_name, "weapon" ) == 0 )
 		{
@@ -320,7 +311,8 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 	// Register the kill, but don't bother adding suicides or kills on POV demos that are not seen by the recorder
 	if( !bSuicide
 	&& (!m_bIsPOV || pAttacker->userID == m_iPOVPlayerUserID || bSpectatingAttacker)
-	&& (!pVictim->fakeplayer || Settings()->ShouldTickFragsVsBots()) )
+	&& (!pVictim->fakeplayer || Settings()->ShouldTickFragsVsBots())
+	&& (!pAttacker->fakeplayer || Settings()->ShouldTickFragsByBots()) )
 	{
 		// Check for attributes
 		EntityEntry *pEntAttacker = FindEntity( pAttacker->entityIndex );
@@ -368,7 +360,7 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 		bool bullet_kill = WeaponUsesBullets( weaponName );
 
-		// Add bullet kills to post check list
+		// Add bullet kills to post-check list
 		if( bullet_kill )
 		{
 			bool bAlreadyIn = false;
@@ -400,12 +392,12 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		if( bullet_kill )
 		{
 			float timeSinceFlashed = GetTimeBetweenTicks( m_iCurrentTick, pAttacker->flashinfo.tick );
-			const float minRemainingFlashedTime = 2.5f;
+			constexpr float minRemainingFlashedTime = 2.3f;
 			blind_kill = (pAttacker->flashinfo.time - timeSinceFlashed) >= minRemainingFlashedTime;
 		}
 
 		// ===== Mid-air check ====================
-		// Check this here AND in player post check, to make sure the player is properly in the air
+		// Check this here AND in player post-check, to make sure the player is properly in the air
 		char midair_status = ON_GROUND;
 
 		// Don't check for spectated mid-air kills in POV demos, because for some reason send props are not properly updated
@@ -517,7 +509,7 @@ void DemoParser::HandlePlayerDisconnectEvent( bf_read &reader, const GameEvent &
 
 // =====================================================================================================================================================================
 
-void DemoParser::HandleRoundStartEvent( bf_read &reader, const GameEvent &event )
+void DemoParser::OnRoundStartEvent( void )
 {
 	// Find the frags from the previous round
 	FindRoundFrags();

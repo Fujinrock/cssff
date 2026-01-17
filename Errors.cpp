@@ -1,4 +1,4 @@
-#include "Errors.h"
+﻿#include "Errors.h"
 #include "DemoParser.h"
 #include "Common.h"
 #include "Settings.h"
@@ -35,6 +35,13 @@ ParsingError_t::ParsingError_t( const char *msg )
 			printf( "Done parsing!\n\n" );
 		else
 			printf( "Error encountered!\n\n" );
+	}
+	else
+	{
+		if( at_end_of_demo )
+			printf( " Successfully parsed" );
+		else
+			printf( " Error encountered" );
 	}
 
 	OnParsingEnd();
