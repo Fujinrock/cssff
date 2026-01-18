@@ -284,10 +284,10 @@ void DemoParser::OnParsingEnd( void )
 			for( size_t i = 0; i < g_WarningDemos.size(); ++i )
 			{
 				std::string warning;
-				g_WarningDemos[i].GetString( warning );
+				g_WarningDemos[i].GetString( warning, false );
 
 				char szFailBuffer[300];
-				_snprintf_s( szFailBuffer, sizeof( szFailBuffer ), sizeof( szFailBuffer ), "%d. %s\n", i + 1, warning.c_str() );
+				_snprintf_s( szFailBuffer, sizeof( szFailBuffer ), sizeof( szFailBuffer ), "- %s\n", warning.c_str() );
 				printf( szFailBuffer );
 			}
 

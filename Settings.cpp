@@ -795,7 +795,7 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	}
 
 	// Extra max time key
-	if( num_special_kills > 0 )
+	if( num_special_kills > 0 && fMaxTime >= 0.f )
 	{
 		if( weapon_settings && weapon_settings->find( sp_kill_extra_time_key ) != weapon_settings->end() )
 		{
@@ -811,7 +811,7 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		}
 	}
 
-	if( frag_time > fMaxTime )
+	if( fMaxTime >= 0.f && frag_time > fMaxTime )
 	{
 		if( !bTickStationary || !bIsStationary )
 			return false;

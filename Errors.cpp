@@ -56,9 +56,14 @@ ParsingWarning_t::ParsingWarning_t( const std::string &_demoname, WarningType _t
 
 }
 
-void ParsingWarning_t::GetString( std::string &buffer )
+void ParsingWarning_t::GetString( std::string &buffer, bool prepend_demoname )
 {
-	buffer = demoname + ": " + g_szWarnings[ type ] + " on tick " + std::to_string( (long long)tick );
+	buffer = "";
+
+	if( prepend_demoname )
+		buffer = demoname + ": ";
+
+	buffer = buffer + g_szWarnings[type] + " on tick " + std::to_string((long long)tick);
 
 	if( count > 1 )
 		buffer += " (" + std::to_string( (long long)count ) + "x)";

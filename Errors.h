@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include "vector"
@@ -29,7 +29,7 @@ struct ParsingWarning_t
 {
 	ParsingWarning_t( const std::string &_demoname, WarningType _type );
 
-	void GetString( std::string &buffer );
+	void GetString( std::string &buffer, bool prepend_demoname = true );
 
 	std::string demoname;
 	WarningType type;
