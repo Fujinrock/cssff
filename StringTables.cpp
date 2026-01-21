@@ -1,4 +1,4 @@
-#include "StringTables.h"
+﻿#include "StringTables.h"
 #include "DemoParser.h"
 #include "Player.h"
 #include "Errors.h"
@@ -132,10 +132,6 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 		{
 			pEntry = "";
 		}
-
-#if defined _DEBUG_PRINT_STRINGTABLES
-		std::cout << "       L " << entryIndex << ". " << pEntry << " (" << nBytes << " bytes) " << pUserData << std::endl;
-#endif
 
 		// Add/update players if this is the userinfo string table
 		if( is_user_info && pUserData )

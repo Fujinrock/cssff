@@ -225,19 +225,6 @@ void DemoParser::HandleSVCCreateStringTable( bf_read &reader )
 
 	bool bIsUserInfo = !strcmp( name, "userinfo" );
 
-#if defined _DEBUG_PRINT_STRINGTABLES
-	std::cout << "    L " << "Table name: " << name << std::endl;
-	std::cout << "    L " << "Max entries: " << max_entries << std::endl;
-	std::cout << "    L " << "Num of entries: " << num_entries << std::endl;
-	std::cout << "    L " << "Data size: " << datasize << std::endl;
-	std::cout << "    L " << "User data fixed size: " << (user_data_fixed_size? "yes":"no") << std::endl;
-	if( user_data_fixed_size )
-	{
-		std::cout << "    L " << "User data size: " << user_data_size << std::endl;
-		std::cout << "    L " << "User data size bits: " << user_data_size_bits << std::endl;
-	}
-#endif
-
 	CreateStringTable( name, max_entries, user_data_size, user_data_size_bits, user_data_fixed_size );
 
 	ParseStringTableUpdate( reader, num_entries, max_entries, user_data_size, user_data_size_bits, user_data_fixed_size, bIsUserInfo );

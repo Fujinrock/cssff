@@ -1,4 +1,4 @@
-#include "Entities.h"
+﻿#include "Entities.h"
 #include "PropDecode.h"
 #include "DemoParser.h"
 #include "Errors.h"
@@ -260,59 +260,65 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 			pEntity->AddOrUpdateProp( pSendProp, pProp );
 
 			// Only player entities are read, so we know the prop applies to a player
+			// Player might not be found if they fail to connect to the server but are updated
 
 			if( index == m_PropIndices.uPitchAnglePropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				assert( pPlayer );
-
-				pPlayer->AddPitchAngle( pProp->m_value.m_float );
+				if( pPlayer )
+				{
+					pPlayer->AddPitchAngle( pProp->m_value.m_float );
+				}
 			}
 			else if( index == m_PropIndices.uYawAnglePropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				assert( pPlayer );
-
-				pPlayer->AddYawAngle( pProp->m_value.m_float );
+				if( pPlayer )
+				{
+					pPlayer->AddYawAngle( pProp->m_value.m_float );
+				}
 			}
 			else if( index == m_PropIndices.uFlashDurationPropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				assert( pPlayer );
-
-				pPlayer->flashinfo.tick = m_iCurrentTick;
-				pPlayer->flashinfo.time = pProp->m_value.m_float;
+				if( pPlayer )
+				{
+					pPlayer->flashinfo.tick = m_iCurrentTick;
+					pPlayer->flashinfo.time = pProp->m_value.m_float;
+				}
 			}
 			else if( index == m_PropIndices.uFlagsPropIndex )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				assert( pPlayer );
-
-				if( !(pProp->m_value.m_int & FL_ONGROUND) )
+				if( pPlayer )
 				{
-					if( pPlayer->airstatus == PL_ON_GROUND )
-						pPlayer->airstatus = PL_IN_AIR_STARTED;
-				}
-				else
-				{
-					pPlayer->airstatus = PL_ON_GROUND;
+					if( !( pProp->m_value.m_int & FL_ONGROUND ) )
+					{
+						if( pPlayer->airstatus == PL_ON_GROUND )
+							pPlayer->airstatus = PL_IN_AIR_STARTED;
+					}
+					else
+					{
+						pPlayer->airstatus = PL_ON_GROUND;
+					}
 				}
 			}
 			else if( index == m_PropIndices.uOriginPropIndex[0] || index == m_PropIndices.uOriginPropIndex[1] )
 			{
 				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				assert( pPlayer );
+				if( pPlayer )
+				{
+					if( pPlayer->airstatus == PL_IN_AIR_STARTED
+						&& pProp->m_value.m_vector.z > ( pPlayer->lastZ + 1.f ) )
+						pPlayer->airstatus = PL_WENT_UP_IN_AIR;
 
-				if( pPlayer->airstatus == PL_IN_AIR_STARTED
-				&& pProp->m_value.m_vector.z > (pPlayer->lastZ + 1.f) )
-					pPlayer->airstatus = PL_WENT_UP_IN_AIR;
-
-				pPlayer->lastZ = pProp->m_value.m_vector.z;
+					pPlayer->lastZ = pProp->m_value.m_vector.z;
+				}
 			}
 		}
 		else
