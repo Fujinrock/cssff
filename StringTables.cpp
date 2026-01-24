@@ -139,6 +139,7 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 			Player player( *(const Player *)pUserData );
 			player.entityIndex = entryIndex + 1;
 			player.airstatus = PL_ON_GROUND;
+			player.activity = PL_ACTIVE; // Default to active status in case the demo starts mid-round
 			
 			if( m_bIsPOV && m_iPOVPlayerUserID < 0 )
 			{

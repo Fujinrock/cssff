@@ -160,9 +160,16 @@
     <ClInclude Include="Netmessages.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PropDecode.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="StringTables.h" />
     <ClInclude Include="Weapons.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="cssff.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="cssff.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

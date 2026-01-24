@@ -148,6 +148,7 @@ private:
 	float				m_fTickInterval;				///< # of seconds between ticks
 	int					m_iTickRate;					///< # of ticks per second
 	int					m_iCurrentTick;					///< The tick the parser is currently at
+	int					m_iNewRoundTick;				///< Tick when the current round started
 
 	bool				m_bUse5BitStringTableIndices;	///< Really old demos have 4 bit string table indices
 

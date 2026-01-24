@@ -32,6 +32,7 @@ void Player::CopyFrom( const Player &src )
 	// These need to be copied too, because the copy constructor is used when adding new players
 	entityIndex = src.entityIndex;
 	airstatus = src.airstatus;
+	activity = src.activity;
 }
 
 // =====================================================================================================================================================================

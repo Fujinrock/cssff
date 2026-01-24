@@ -31,6 +31,7 @@ DemoParser::DemoParser( DemoFile *pDemo )
 	m_iMaxClients = -1;
 
 	m_iCurrentTick = 0;
+	m_iNewRoundTick = 0;
 
 	m_bServerInfoEncountered = false;
 	m_bGameEventListEncountered = false;

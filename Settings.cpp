@@ -1154,7 +1154,7 @@ bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weap
 	}
 
 	if( type_flags & FL_KILL_NOSCOPE )
-	{	// TODO: add running check
+	{
 		if( ShouldTickFrag( KEY_TICK_NOSCOPES, KEY_NOSCOPE_MIN_DISTANCE, KEY_NOSCOPE_MIN_DISTANCE_HS_MOD, KEY_NOSCOPE_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
 			return true;
 	}

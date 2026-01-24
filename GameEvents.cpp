@@ -273,6 +273,21 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 	bool bSpectatingAttacker = false;
 	bool bSuicide = !pAttacker || pAttacker == pVictim;
 
+#ifdef _DEBUG_AFK_KILLS
+	if( !bSuicide && pVictim->activity == PL_AFK )
+	{
+		printf( "\nVictim %s was AFK at tick %d\n\n", pVictim->name, m_iCurrentTick );
+	}
+	else if( !bSuicide && pAttacker->activity == PL_AFK )
+	{
+		printf( "\nAttacker %s was AFK at tick %d\n\n", pAttacker->name, m_iCurrentTick );
+	}
+#endif
+
+	// Ignore kills vs players who are AFK
+	if( pVictim->activity == PL_AFK )
+		return;
+
 	// Check if the POV recorder is spectating the other player doing the kill
 	if( m_bPOVPlayerIsDead && !bSuicide && m_bIsPOV && pAttacker->userID != m_iPOVPlayerUserID )
 	{
@@ -535,10 +550,19 @@ void DemoParser::OnRoundStartEvent( void )
 	m_ExpiredUserIDs.clear();
 	m_PlayerPostCheckData.clear();
 
+	m_iNewRoundTick = m_iCurrentTick;
+
 	// Reset player kills for the next round
 	for( auto it = m_Players.begin(); it != m_Players.end(); ++it )
 	{
 		it->ResetKills();
+
+		// Set player statuses to AFK on STV demos, so we know to look for origin/viewangle updates
+		// Don't do this on POV demos, because the player entities might not be updated before being killed
+		if( !m_bIsPOV )
+		{
+			it->activity = PL_AFK;
+		}
 	}
 }
 

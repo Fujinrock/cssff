@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common.h"
 #include "vector"
@@ -33,6 +33,12 @@ enum PlayerAirStatus_e
 	PL_ON_GROUND,			///< Not in air
 	PL_IN_AIR_STARTED,		///< FL_ONGROUND was removed
 	PL_WENT_UP_IN_AIR		///< m_vecOrigin Z increased while FL_ONGROUND was not set
+};
+
+enum PlayerActivityStatus_e
+{
+	PL_ACTIVE,				///< Player has moved or looked around
+	PL_AFK,					///< No updates to origin or view angles after round start
 };
 
 struct PostCheckData_t
@@ -83,7 +89,8 @@ struct Player
 
 	int entityIndex;							///< EntityID is this - 1
 	PlayerAirStatus_e airstatus;				///< For jumpshot detection
-	float lastZ;								///< Last Z value in m_vecOrigin
+	Vector lastOrigin;							///< Last Z value in m_vecOrigin
+	PlayerActivityStatus_e activity;			///< Is the player AFK
 
 private:
 	std::vector< kill_info_t > roundkills;		///< Kills done by this player on the current round

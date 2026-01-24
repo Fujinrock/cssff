@@ -254,76 +254,96 @@ bool DemoParser::ReadNewEntity( bf_read &reader, EntityEntry *pEntity )
 		index += reader.ReadUBitVar() + 1;
 
 		FlattenedPropEntry *pSendProp = GetSendPropByIndex( pEntity->m_uClass, index );
-		if( pSendProp )
+
+		if( !pSendProp )
 		{
-			Prop_t *pProp = DecodeProp( reader, pSendProp, pEntity->m_uClass, index );
-			pEntity->AddOrUpdateProp( pSendProp, pProp );
+			return false;
+		}
 
-			// Only player entities are read, so we know the prop applies to a player
-			// Player might not be found if they fail to connect to the server but are updated
+		Prop_t *pProp = DecodeProp( reader, pSendProp, pEntity->m_uClass, index );
+		pEntity->AddOrUpdateProp( pSendProp, pProp );
 
-			if( index == m_PropIndices.uPitchAnglePropIndex )
+		// Only player entities are read, so we know the prop applies to a player
+		// Player might not be found if they fail to connect to the server but are updated
+
+		constexpr int min_new_round_ticks{ 10 };
+
+		if( index == m_PropIndices.uPitchAnglePropIndex )
+		{
+			Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
+
+			if( pPlayer )
 			{
-				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
+				pPlayer->AddPitchAngle( pProp->m_value.m_float );
 
-				if( pPlayer )
-				{
-					pPlayer->AddPitchAngle( pProp->m_value.m_float );
-				}
+				if( pPlayer->activity == PL_AFK
+				&& m_iCurrentTick - m_iNewRoundTick > min_new_round_ticks )
+					pPlayer->activity = PL_ACTIVE;
 			}
-			else if( index == m_PropIndices.uYawAnglePropIndex )
-			{
-				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
+		}
+		else if( index == m_PropIndices.uYawAnglePropIndex )
+		{
+			Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				if( pPlayer )
-				{
-					pPlayer->AddYawAngle( pProp->m_value.m_float );
-				}
+			if( pPlayer )
+			{
+				pPlayer->AddYawAngle( pProp->m_value.m_float );
+
+				if( pPlayer->activity == PL_AFK
+				&& m_iCurrentTick - m_iNewRoundTick > min_new_round_ticks )
+					pPlayer->activity = PL_ACTIVE;
 			}
-			else if( index == m_PropIndices.uFlashDurationPropIndex )
-			{
-				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
+		}
+		else if( index == m_PropIndices.uFlashDurationPropIndex )
+		{
+			Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				if( pPlayer )
-				{
-					pPlayer->flashinfo.tick = m_iCurrentTick;
-					pPlayer->flashinfo.time = pProp->m_value.m_float;
-				}
+			if( pPlayer )
+			{
+				pPlayer->flashinfo.tick = m_iCurrentTick;
+				pPlayer->flashinfo.time = pProp->m_value.m_float;
 			}
-			else if( index == m_PropIndices.uFlagsPropIndex )
-			{
-				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
+		}
+		else if( index == m_PropIndices.uFlagsPropIndex )
+		{
+			Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
 
-				if( pPlayer )
+			if( pPlayer )
+			{
+				if( !( pProp->m_value.m_int & FL_ONGROUND ) )
 				{
-					if( !( pProp->m_value.m_int & FL_ONGROUND ) )
-					{
-						if( pPlayer->airstatus == PL_ON_GROUND )
-							pPlayer->airstatus = PL_IN_AIR_STARTED;
-					}
-					else
-					{
-						pPlayer->airstatus = PL_ON_GROUND;
-					}
+					if( pPlayer->airstatus == PL_ON_GROUND )
+						pPlayer->airstatus = PL_IN_AIR_STARTED;
 				}
-			}
-			else if( index == m_PropIndices.uOriginPropIndex[0] || index == m_PropIndices.uOriginPropIndex[1] )
-			{
-				Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
-
-				if( pPlayer )
+				else
 				{
-					if( pPlayer->airstatus == PL_IN_AIR_STARTED
-						&& pProp->m_value.m_vector.z > ( pPlayer->lastZ + 1.f ) )
-						pPlayer->airstatus = PL_WENT_UP_IN_AIR;
-
-					pPlayer->lastZ = pProp->m_value.m_vector.z;
+					pPlayer->airstatus = PL_ON_GROUND;
 				}
 			}
 		}
-		else
+		else if( index == m_PropIndices.uOriginPropIndex[0] || index == m_PropIndices.uOriginPropIndex[1] )
 		{
-			return false;
+			Player *pPlayer = FindPlayerByEntityIndex( pEntity->m_nEntity );
+
+			if( pPlayer )
+			{
+				if( pPlayer->airstatus == PL_IN_AIR_STARTED
+				&& pProp->m_value.m_vector.z > (pPlayer->lastOrigin.z + 1.f) )
+					pPlayer->airstatus = PL_WENT_UP_IN_AIR;
+
+				if( pPlayer->activity == PL_AFK
+				&& m_iCurrentTick - m_iNewRoundTick > min_new_round_ticks )
+				{
+					Vector v = pProp->m_value.m_vector;
+
+					// Check for movement in 2D
+					if( abs(v.x - pPlayer->lastOrigin.x) > 1.f
+					|| abs(v.y - pPlayer->lastOrigin.y) > 1.f )
+						pPlayer->activity = PL_ACTIVE;
+				}
+
+				pPlayer->lastOrigin = pProp->m_value.m_vector;
+			}
 		}
 	}
 

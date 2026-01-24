@@ -2,7 +2,7 @@
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.1.10"
+#define	CSSFF_NAME					"CSSFF v2.1.11"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_HEADER_ID_GOLDSRC		"HLDEMO"
