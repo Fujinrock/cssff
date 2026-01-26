@@ -120,11 +120,11 @@ void DemoParser::HandleSVCServerInfo( bf_read &reader )
 		int demoTicks = m_demoHeader.playback_ticks;
 
 		printf( "\n========== DEMO INFO ==========\n\n" );
+		printf( "\t%s demo\n", ishltv? "STV":"POV" );
 		printf( "\tProtocol version: %d\n", protocol );
 #ifdef _DEBUG
 		printf( "\tUsing %d bit string table indices\n", m_bUse5BitStringTableIndices? 5 : 4 );
 #endif
-		printf( "\t%s demo\n", ishltv? "STV":"POV" );
 		if( !demoTicks && !demoLength )
 		{
 			printf( "\tDemo length: unknown\n" );
@@ -132,29 +132,41 @@ void DemoParser::HandleSVCServerInfo( bf_read &reader )
 		}
 		else
 		{
-			int minutes = (int)demoLength / 60;
-			float fseconds = demoLength - minutes * 60;
-			int seconds = (int)(fseconds + 0.5f);
-			printf( "\tDemo length: %d:%02d min\n", minutes, seconds );
+			demoLength += 0.5f;
+			int hours = (int)demoLength / 60 / 60;
+			int minutes = (int)demoLength / 60 - hours * 60;
+			int seconds = (int)fmodf(demoLength, 60);
+
+			printf( "\tDemo length: ");
+			if( hours )
+			{
+				printf( "%d:%02d:%02d\n", hours, minutes, seconds );
+			}
+			else
+			{
+				printf( "%d:%02d\n", minutes, seconds );
+			}
+
 			printf( "\tDemo ticks: %d\n", demoTicks );
 		}
 
 		printf( "\tTickrate: %d\n", m_iTickRate );
-		printf( "\tRecorded on a %s server\n", isdedicated? "dedicated":"listen" );
-		if( !ishltv )
-			printf( "\tPlayer slot: %d\n", playerslot );
-		printf( "\tServer max clients: %d\n", maxclients );
-#ifndef _DEBUG
-		if( m_bUse5BitStringTableIndices )
-			printf( "\tOperating system: %s\n", platform == 'w' ? "Windows" : "Linux" );
-		else
-			printf( "\tOperating system: %s\n", platform == 'L' ? "Linux" : "Windows" );
-#else
-		printf( "\tOperating system: %c\n", platform );
-#endif
 		printf( "\tMap name: %s\n", mapname );
-		printf( "\tSkybox name: %s\n", skyname );
-		printf( "\t%s name: %s\n", ishltv? "SourceTV":"Server", hostname );
+		if( !ishltv )
+			printf( "\tClient name: %s\n", m_demoHeader.clientname );
+
+		printf( "\tServer name: %s\n", ishltv ? m_demoHeader.servername : hostname );
+		if( !ishltv )
+			printf( "\tServer IP: %s\n", m_demoHeader.servername );
+		else
+			printf( "\tSourceTV name: %s\n", hostname );
+		printf( "\tServer type: %s server\n", isdedicated? "dedicated":"listen" );
+#ifndef _DEBUG
+		printf( "\tServer OS: %s\n", tolower(platform) == 'w' ? "Windows" : "Linux" );
+#else
+		printf( "\tServer OS: %c\n", platform );
+#endif
+		printf( "\tServer max clients: %d\n", maxclients );
 		printf( "\n\n\tParsing in progress" );
 	}
 }

@@ -54,11 +54,12 @@ struct PostCheckData_t
 struct kill_info_t
 {
 	int tick;
+	int victim_id;
 	byte team;
 	bool teamkill;
 	bool headshot;
 	bool noscope;
-	char midair_status;
+	byte midair_status;
 	bool penetrated;
 	bool flickshot;
 	CSWeaponID weaponID;
@@ -89,7 +90,7 @@ struct Player
 
 	int entityIndex;							///< EntityID is this - 1
 	PlayerAirStatus_e airstatus;				///< For jumpshot detection
-	Vector lastOrigin;							///< Last Z value in m_vecOrigin
+	Vector lastOrigin;							///< Latest m_vecOrigin value
 	PlayerActivityStatus_e activity;			///< Is the player AFK
 
 private:
@@ -108,20 +109,7 @@ public:
 	}
 	flashinfo;
 
-	void AddKill( 
-		int tick,
-		char team,
-		const char *weapon_name,
-		bool teamkill,
-		bool headshot,
-		bool noscope,
-		char midair_status,
-		byte penetrated,
-		bool flickshot,
-		float distance,
-		const Vector &position,
-		bool spectated,
-		bool blind );
+	void AddKill( const kill_info_t &info );
 
 	int GetNumKills( void ) const;
 

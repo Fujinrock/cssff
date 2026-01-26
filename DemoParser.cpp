@@ -222,11 +222,11 @@ bool DemoParser::Parse( void )
 float DemoParser::GetTimeBetweenTicks( int tick1, int tick2 ) const
 {
 	if( tick1 == tick2 )
-		return -1;
+		return -1.f;
 
 	int tickDelta = abs( tick1 - tick2 );
 
-	if( m_fTickInterval <= 0 )
+	if( m_fTickInterval <= 0.f )
 		throw ParsingError_t( "invalid tick interval" );
 
 	return (float)tickDelta * m_fTickInterval;

@@ -37,36 +37,8 @@ void Player::CopyFrom( const Player &src )
 
 // =====================================================================================================================================================================
 
-void Player::AddKill(
-	int tick,
-	char team,
-	const char *weapon_name,
-	bool teamkill,
-	bool headshot,
-	bool noscope,
-	char midair_status,
-	byte penetrated,
-	bool flickshot,
-	float distance,
-	const Vector &position,
-	bool spectated,
-	bool blind )
+void Player::AddKill( const kill_info_t &info )
 {
-	kill_info_t info;
-	info.tick = tick;
-	info.team = team;
-	info.weaponID = AliasToWeaponID( weapon_name );
-	info.teamkill = teamkill;
-	info.headshot = headshot;
-	info.noscope = noscope;
-	info.midair_status = midair_status;
-	info.penetrated = penetrated != 0;
-	info.flickshot = flickshot;
-	info.distance = distance;
-	info.position = position;
-	info.spectated = spectated;
-	info.blind = blind;
-
 	roundkills.push_back( info );
 }
 

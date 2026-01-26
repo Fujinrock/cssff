@@ -40,6 +40,15 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 	{
 		const kill_info_t *kill = kills[ i ];
 
+		// Don't allow the same player to die multiple times in a frag
+		int id = kill->victim_id;
+
+		for( int j = i + 1; j < cur_kill_idx; ++j )
+		{
+			if( kills[ j ]->victim_id == id )
+				return false;
+		}
+
 		if( num_weapons < multi_kill_frag_descriptor_t::FRAG_MAX_WEAPONS )
 			weapons[ num_weapons++ ] = kill->weaponID;
 
@@ -255,7 +264,7 @@ void DemoParser::FindRoundFrags( void )
 		if( player_frag.IsValidFrag() ) // Were there any actions to save?
 		{
 			m_Frags.push_back( player_frag );
-			m_Frags.back().SetPlayername(p->name);
+			m_Frags.back().SetPlayername( p->name );
 		}
 	}
 }

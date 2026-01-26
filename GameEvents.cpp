@@ -218,9 +218,9 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 	int fields = event.GetFieldCount();
 
 	char weaponName[ 24 ] = "unknown";
-	bool headshot = false;
-	bool noscope = false;		// This has a field in Clientmod, but can be checked from ent data, too
-	byte penetrated = false;	// Only in Clientmod
+
+	kill_info_t killInfo;
+	memset( &killInfo, 0, sizeof(killInfo) );
 
 	Player *pAttacker = nullptr;
 	Player *pVictim = nullptr;
@@ -232,9 +232,6 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		if( strcmp( field.field_name, "userid" ) == 0 )
 		{
 			pVictim = FindPlayerByUserId( reader.ReadShort() );
-
-			if( !pVictim )
-				throw ParsingError_t( "victim info not found in HandlePlayerDeathEvent" );
 		}
 		else if( strcmp( field.field_name, "attacker" ) == 0 )
 		{
@@ -246,15 +243,15 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		}
 		else if( strcmp( field.field_name, "headshot" ) == 0 )
 		{
-			headshot = reader.ReadOneBit();
+			killInfo.headshot = reader.ReadOneBit();
 		}
 		else if( strcmp( field.field_name, "penetrated" ) == 0 ) // Clientmod only
 		{
-			penetrated = reader.ReadByte();
+			killInfo.penetrated = reader.ReadByte();
 		}
 		else if( strcmp( field.field_name, "noscope" ) == 0 ) // Clientmod only
 		{
-			noscope = reader.ReadOneBit();
+			killInfo.noscope = reader.ReadOneBit();
 		}
 		else // In Clientmod and new CS:S there are additional fields
 		{
@@ -284,12 +281,18 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 	}
 #endif
 
-	// Ignore kills vs players who are AFK
-	if( pVictim->activity == PL_AFK )
+	// Ignore suicides and kills vs players who are AFK
+	// Also ignore bot kills if the settings disallow them
+	if( bSuicide
+	|| pVictim->activity == PL_AFK
+	|| (pVictim->fakeplayer && !Settings()->ShouldTickFragsVsBots())
+	|| (pAttacker->fakeplayer && !Settings()->ShouldTickFragsByBots()) )
+	{
 		return;
+	}
 
 	// Check if the POV recorder is spectating the other player doing the kill
-	if( m_bPOVPlayerIsDead && !bSuicide && m_bIsPOV && pAttacker->userID != m_iPOVPlayerUserID )
+	if( m_bIsPOV && m_bPOVPlayerIsDead && pAttacker->userID != m_iPOVPlayerUserID )
 	{
 		Player *pPOVPlayer = FindPlayerByUserId( m_iPOVPlayerUserID );
 
@@ -323,176 +326,182 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		}
 	}
 
-	// Register the kill, but don't bother adding suicides or kills on POV demos that are not seen by the recorder
-	if( !bSuicide
-	&& (!m_bIsPOV || pAttacker->userID == m_iPOVPlayerUserID || bSpectatingAttacker)
-	&& (!pVictim->fakeplayer || Settings()->ShouldTickFragsVsBots())
-	&& (!pAttacker->fakeplayer || Settings()->ShouldTickFragsByBots()) )
+	// Don't bother adding kills on POV demos that are not seen by the recorder
+	if( m_bIsPOV && pAttacker->userID != m_iPOVPlayerUserID && !bSpectatingAttacker )
 	{
-		// Check for attributes
-		EntityEntry *pEntAttacker = FindEntity( pAttacker->entityIndex );
-		EntityEntry *pEntVictim = FindEntity( pVictim->entityIndex );
-
-		if( !pEntAttacker )
-			throw ParsingError_t( "Attacker entity not found in HandlePlayerDeathEvent" );
-
-		PropEntry *prop;
-
-		// ===== Teamkill check ====================
-		prop = pEntAttacker->FindProp( "m_iTeamNum" );
-
-		// Attacker team prop MUST be found
-		if( !prop )
-		{
-			if( !bSpectatingAttacker )
-			{
-				throw ParsingError_t( "Attacker team prop not found in HandlePlayerDeathEvent" );
-			}
-			else // Sometimes spectated players are a bit buggy props-wise, so just add a warning
-			{
-				AddWarning( m_pDemo->GetFileName(), SPEC_ATTACKER_TEAM_NOT_FOUND );
-				return;
-			}
-		}
-
-		int attackerTeam = prop->m_pPropValue->m_value.m_int;
-
-		bool teamkill = false;
-
-		// Victim entity might be NULL, because it's possible the player got killed before ever entering the PVS
-		if( pEntVictim )
-		{
-			prop = pEntVictim->FindProp( "m_iTeamNum" );
-			if( prop )
-			{
-				teamkill = (attackerTeam == prop->m_pPropValue->m_value.m_int);
-			}
-			else
-			{
-				AddWarning( m_pDemo->GetFileName(), VICTIM_TEAM_NOT_FOUND );
-			}
-		}
-
-		bool bullet_kill = WeaponUsesBullets( weaponName );
-
-		// Add bullet kills to post-check list
-		if( bullet_kill )
-		{
-			bool bAlreadyIn = false;
-			for( size_t i = 0; i < m_PlayerPostCheckData.size(); ++i )
-			{
-				if( m_PlayerPostCheckData[ i ].pPlayer == pAttacker
-				&& m_PlayerPostCheckData[ i ].nKillTick == m_iCurrentTick )
-				{
-					bAlreadyIn = true;
-					break;
-				}
-			}
-
-			if( !bAlreadyIn )
-			{
-				PostCheckData_t data;
-				data.pPlayer = pAttacker;
-				data.nKillTick = m_iCurrentTick;
-				data.bFlickChecked = false;
-				m_PlayerPostCheckData.push_back( data );
-			}
-		}
-
-		// ===== Flashed check ====================
-		bool blind_kill = false;
-
-		// Grenade frags can't be flashed, because that's stupid
-		// Also not knife frags, but it doesn't matter in those
-		if( bullet_kill )
-		{
-			float timeSinceFlashed = GetTimeBetweenTicks( m_iCurrentTick, pAttacker->flashinfo.tick );
-			constexpr float minRemainingFlashedTime = 2.3f;
-			blind_kill = (pAttacker->flashinfo.time - timeSinceFlashed) >= minRemainingFlashedTime;
-		}
-
-		// ===== Mid-air check ====================
-		// Check this here AND in player post-check, to make sure the player is properly in the air
-		char midair_status = ON_GROUND;
-
-		// Don't check for spectated mid-air kills in POV demos, because for some reason send props are not properly updated
-		if( bullet_kill && !bSpectatingAttacker )
-		{
-			prop = pEntAttacker->FindProp( "m_fFlags" );
-
-			// This CAN be NULL, if the flags never had to be updated before a kill was made
-			if( prop )
-			{
-				uint32 flags = prop->m_pPropValue->m_value.m_int;
-
-				if( !(flags & FL_ONGROUND) )
-				{
-					prop = pEntAttacker->FindProp( "movetype" );
-
-					if( !prop )
-					{
-						midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
-					}
-					else if( prop->m_pPropValue->m_value.m_int == MOVETYPE_LADDER )
-					{
-						midair_status = LADDERSHOT;
-					}
-					else
-					{
-						midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
-					}
-				}
-			}
-		}
-
-		// ===== Noscope check ====================
-		if( !noscope && WeaponIsSniper( weaponName ) )
-		{
-			prop = pEntAttacker->FindProp( "m_iFOV" );
-
-			// This can be NULL if the player noscopes someone before ever zooming in
-			if( prop )
-			{
-				noscope = prop->m_pPropValue->m_value.m_int == NOSCOPE_FOV;
-			}
-			// Assume it's a noscope if the prop wasn't updated yet
-			// This could lead to false results if the player started recording while zoomed in
-			else 
-			{
-				noscope = true;
-			}
-		}
-		
-		// ===== Flickshot check ====================
-		// Actually, this has to be checked after packet entities have been processed for this tick
-		bool flickshot = false;
-
-		// ===== Distance check =====================
-		float distance = 0;
-
-		prop = pEntAttacker->FindProp( "m_vecOrigin" );
-
-		if( !prop )
-			throw ParsingError_t( "Attacker origin prop not found in HandlePlayerDeathEvent" );
-
-		Vector vecAttacker = prop->m_pPropValue->m_value.m_vector;
-
-		if( bullet_kill && pEntVictim )
-		{
-			prop = pEntVictim->FindProp( "m_vecOrigin" );
-
-			if( !prop )
-				throw ParsingError_t( "Victim origin prop not found in HandlePlayerDeathEvent" );
-
-			Vector vecVictim = prop->m_pPropValue->m_value.m_vector;
-
-			Vector to( vecVictim - vecAttacker );
-
-			distance = to.Length();
-		}
-
-		pAttacker->AddKill( m_iCurrentTick, attackerTeam, weaponName, teamkill, headshot, noscope, midair_status, penetrated, flickshot, distance, vecAttacker, bSpectatingAttacker, blind_kill );
+		return;
 	}
+
+	// This is a valid kill - check for attributes and register it
+
+	EntityEntry *pEntAttacker = FindEntity( pAttacker->entityIndex );
+	EntityEntry *pEntVictim = FindEntity( pVictim->entityIndex );
+
+	if( !pEntAttacker )
+		throw ParsingError_t( "Attacker entity not found in HandlePlayerDeathEvent" );
+
+	bool bullet_kill = WeaponUsesBullets( weaponName );
+
+	// Add bullet kills to post-check list
+	if( bullet_kill )
+	{
+		bool bAlreadyIn = false;
+		for( size_t i = 0; i < m_PlayerPostCheckData.size(); ++i )
+		{
+			if( m_PlayerPostCheckData[ i ].pPlayer == pAttacker
+			&& m_PlayerPostCheckData[ i ].nKillTick == m_iCurrentTick )
+			{
+				bAlreadyIn = true;
+				break;
+			}
+		}
+
+		if( !bAlreadyIn )
+		{
+			PostCheckData_t data;
+			data.pPlayer = pAttacker;
+			data.nKillTick = m_iCurrentTick;
+			data.bFlickChecked = false;
+			m_PlayerPostCheckData.push_back( data );
+		}
+	}
+
+	PropEntry *prop;
+
+	// ===== Teamkill check ====================
+	prop = pEntAttacker->FindProp( "m_iTeamNum" );
+
+	// Attacker team prop MUST be found
+	if( !prop )
+	{
+		if( !bSpectatingAttacker )
+		{
+			throw ParsingError_t( "Attacker team prop not found in HandlePlayerDeathEvent" );
+		}
+		else // Sometimes spectated players are a bit buggy props-wise, so just add a warning
+		{
+			AddWarning( m_pDemo->GetFileName(), SPEC_ATTACKER_TEAM_NOT_FOUND );
+			return;
+		}
+	}
+
+	killInfo.team = prop->m_pPropValue->m_value.m_int;
+
+	killInfo.teamkill = false;
+
+	// Victim entity might be NULL, because it's possible the player got killed before ever entering the PVS
+	if( pEntVictim )
+	{
+		prop = pEntVictim->FindProp( "m_iTeamNum" );
+		if( prop )
+		{
+			killInfo.teamkill = (killInfo.team == prop->m_pPropValue->m_value.m_int);
+		}
+		else
+		{
+			AddWarning( m_pDemo->GetFileName(), VICTIM_TEAM_NOT_FOUND );
+		}
+	}
+
+	// ===== Flashed check ====================
+	killInfo.blind = false;
+
+	// Grenade frags can't be flashed, because that's stupid
+	// Also not knife frags, but it doesn't matter in those
+	if( bullet_kill )
+	{
+		float timeSinceFlashed = GetTimeBetweenTicks( m_iCurrentTick, pAttacker->flashinfo.tick );
+		constexpr float minRemainingFlashedTime = 2.3f;
+		killInfo.blind = (pAttacker->flashinfo.time - timeSinceFlashed) >= minRemainingFlashedTime;
+	}
+
+	// ===== Mid-air check ====================
+	// Check this here AND in player post-check, to make sure the player is properly in the air
+	killInfo.midair_status = ON_GROUND;
+
+	// Don't check for spectated mid-air kills in POV demos, because for some reason send props are not properly updated
+	if( bullet_kill && !bSpectatingAttacker )
+	{
+		prop = pEntAttacker->FindProp( "m_fFlags" );
+
+		// This CAN be NULL, if the flags never had to be updated before a kill was made
+		if( prop )
+		{
+			uint32 flags = prop->m_pPropValue->m_value.m_int;
+
+			if( !(flags & FL_ONGROUND) )
+			{
+				prop = pEntAttacker->FindProp( "movetype" );
+
+				if( !prop )
+				{
+					killInfo.midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
+				}
+				else if( prop->m_pPropValue->m_value.m_int == MOVETYPE_LADDER )
+				{
+					killInfo.midair_status = LADDERSHOT;
+				}
+				else
+				{
+					killInfo.midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
+				}
+			}
+		}
+	}
+
+	// ===== Noscope check ====================
+	if( !killInfo.noscope && WeaponIsSniper( weaponName ) )
+	{
+		prop = pEntAttacker->FindProp( "m_iFOV" );
+
+		// This can be NULL if the player noscopes someone before ever zooming in
+		if( prop )
+		{
+			killInfo.noscope = prop->m_pPropValue->m_value.m_int == NOSCOPE_FOV;
+		}
+		// Assume it's a noscope if the prop wasn't updated yet
+		// This could lead to false results if the player started recording while zoomed in
+		else 
+		{
+			killInfo.noscope = true;
+		}
+	}
+		
+	// ===== Flickshot check ====================
+	// Actually, this has to be checked after packet entities have been processed for this tick
+	killInfo.flickshot = false;
+
+	// ===== Distance check =====================
+	killInfo.distance = 0;
+
+	prop = pEntAttacker->FindProp( "m_vecOrigin" );
+
+	if( !prop )
+		throw ParsingError_t( "Attacker origin prop not found in HandlePlayerDeathEvent" );
+
+	Vector vecAttacker = prop->m_pPropValue->m_value.m_vector;
+
+	if( bullet_kill && pEntVictim )
+	{
+		prop = pEntVictim->FindProp( "m_vecOrigin" );
+
+		if( !prop )
+			throw ParsingError_t( "Victim origin prop not found in HandlePlayerDeathEvent" );
+
+		Vector vecVictim = prop->m_pPropValue->m_value.m_vector;
+
+		Vector to( vecVictim - vecAttacker );
+
+		killInfo.distance = to.Length();
+	}
+
+	killInfo.tick = m_iCurrentTick;
+	killInfo.victim_id = pVictim->userID;
+	killInfo.weaponID = AliasToWeaponID( weaponName );
+	killInfo.spectated = bSpectatingAttacker;
+	killInfo.position = vecAttacker;
+
+	pAttacker->AddKill( killInfo );
 }
 
 // =====================================================================================================================================================================
