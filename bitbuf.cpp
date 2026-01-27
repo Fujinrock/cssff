@@ -1,4 +1,4 @@
-//========= Copyright � 1996-2005, Valve Corporation, All rights reserved. ============//
+﻿//========= Copyright © 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: 
 //
@@ -21,24 +21,6 @@
 #define NORMAL_RESOLUTION			(1.0/(NORMAL_DENOMINATOR))
 
 #pragma warning ( disable : 4244 )
-
-static BitBufErrorHandler g_BitBufErrorHandler = 0;
-
-
-void InternalBitBufErrorHandler( BitBufErrorType errorType, const char *pDebugName )
-{
-	if ( g_BitBufErrorHandler )
-		g_BitBufErrorHandler( errorType, pDebugName );
-}
-
-
-void SetBitBufErrorHandler( BitBufErrorHandler fn )
-{
-	g_BitBufErrorHandler = fn;
-}
-
-
-// #define BB_PROFILING
 
 
 // Precalculated bit masks for WriteUBitLong. Using these tables instead of 
@@ -69,424 +51,6 @@ public:
 	}
 };
 CBitWriteMasksInit g_BitWriteMasksInit;
-
-
-// ---------------------------------------------------------------------------------------- //
-// bf_write
-// ---------------------------------------------------------------------------------------- //
-
-bf_write::bf_write()
-{
-	m_pData = nullptr;
-	m_nDataBytes = 0;
-	m_nDataBits = -1; // set to -1 so we generate overflow on any operation
-	m_iCurBit = 0;
-	m_bOverflow = false;
-	m_bAssertOnOverflow = true;
-	m_pDebugName = nullptr;
-}
-
-bf_write::bf_write( const char *pDebugName, void *pData, int nBytes, int nBits )
-{
-	m_bAssertOnOverflow = true;
-	m_pDebugName = pDebugName;
-	StartWriting( pData, nBytes, 0, nBits );
-}
-
-bf_write::bf_write( void *pData, int nBytes, int nBits )
-{
-	m_bAssertOnOverflow = true;
-	StartWriting( pData, nBytes, 0, nBits );
-}
-
-void bf_write::StartWriting( void *pData, int nBytes, int iStartBit, int nBits )
-{
-	// Make sure it's dword aligned and padded.
-	assert( (nBytes % 4) == 0 );
-	assert(((unsigned long)pData & 3) == 0);
-
-	m_pData = (unsigned char*)pData;
-	m_nDataBytes = nBytes;
-
-	if ( nBits == -1 )
-	{
-		m_nDataBits = nBytes << 3;
-	}
-	else
-	{
-		assert( nBits <= nBytes*8 );
-		m_nDataBits = nBits;
-	}
-
-	m_iCurBit = iStartBit;
-	m_bOverflow = false;
-}
-
-void bf_write::Reset()
-{
-	m_iCurBit = 0;
-	m_bOverflow = false;
-}
-
-
-void bf_write::SetAssertOnOverflow( bool bAssert )
-{
-	m_bAssertOnOverflow = bAssert;
-}
-
-
-const char* bf_write::GetDebugName()
-{
-	return m_pDebugName;
-}
-
-
-void bf_write::SetDebugName( const char *pDebugName )
-{
-	m_pDebugName = pDebugName;
-}
-
-
-void bf_write::SeekToBit( int bitPos )
-{
-	m_iCurBit = bitPos;
-}
-
-
-// Sign bit comes first
-void bf_write::WriteSBitLong( int data, int numbits )
-{
-	// Do we have a valid # of bits to encode with?
-	assert( numbits >= 1 );
-
-	// Note: it does this wierdness here so it's bit-compatible with regular integer data in the buffer.
-	// (Some old code writes direct integers right into the buffer).
-	if(data < 0)
-	{
-#ifdef _DEBUG
-	if( numbits < 32 )
-	{
-		// Make sure it doesn't overflow.
-
-		if( data < 0 )
-		{
-			assert( data >= -(1 << (numbits-1)) );
-		}
-		else
-		{
-			assert( data < (1 << (numbits-1)) );
-		}
-	}
-#endif
-
-		WriteUBitLong( (unsigned int)(0x80000000 + data), numbits - 1, false );
-		WriteOneBit( 1 );
-	}
-	else
-	{
-		WriteUBitLong((unsigned int)data, numbits - 1);
-		WriteOneBit( 0 );
-	}
-}
-
-// writes an unsigned integer with variable bit length
-void bf_write::WriteUBitVar( unsigned int data )
-{
-	unsigned int bits = 0;
-	unsigned int base = 0;
-
-	while (data > (base<<1))
-	{
-		bits++;
-		base = (1<<bits)-1;
-	}
-
-	// how many bits do we use
-	if ( bits > 0)
-		WriteUBitLong( 0, bits );
-
-	// end marker
-	WriteOneBit( 1 );  
-
-	// write the value
-	if ( bits > 0)
-		WriteUBitLong( data - base , bits );
-}
-
-void bf_write::WriteBitLong(unsigned int data, int numbits, bool bSigned)
-{
-	if(bSigned)
-		WriteSBitLong((int)data, numbits);
-	else
-		WriteUBitLong(data, numbits);
-}
-
-bool bf_write::WriteBits(const void *pInData, int nBits)
-{
-#if defined( BB_PROFILING )
-	VPROF( "bf_write::WriteBits" );
-#endif
-
-	unsigned char *pOut = (unsigned char*)pInData;
-	int nBitsLeft = nBits;
-
-	if((m_iCurBit+nBits) > m_nDataBits)
-	{
-		SetOverflowFlag();
-		CallErrorHandler( BITBUFERROR_BUFFER_OVERRUN, GetDebugName() );
-		return false;
-	}
-
-	// Get output dword-aligned.
-	while(((unsigned long)pOut & 3) != 0 && nBitsLeft >= 8)
-	{
-
-		WriteUBitLong( *pOut, 8, false );
-		++pOut;
-		nBitsLeft -= 8;
-	}
-	
-	// check if we can use fast memcpy if m_iCurBit is byte aligned
-	if ( (nBitsLeft >= 32) && (m_iCurBit & 7) == 0 )
-	{
-		int numbytes = (nBitsLeft >> 3); 
-		int numbits = numbytes << 3;
-		
-		// Bounds checking..
-		// TODO: May not need this check anymore
-		if((m_iCurBit+numbits) > m_nDataBits)
-		{
-			m_iCurBit = m_nDataBits;
-			SetOverflowFlag();
-			CallErrorHandler( BITBUFERROR_BUFFER_OVERRUN, GetDebugName() );
-			return false;
-		}
-		
-		memcpy( m_pData+(m_iCurBit>>3), pOut, numbytes );
-		pOut += numbytes;
-		nBitsLeft -= numbits;
-		m_iCurBit += numbits;
-	}
-
-	// Read dwords.
-	while(nBitsLeft >= 32)
-	{
-		WriteUBitLong( *((unsigned long*)pOut), 32, false );
-		pOut += sizeof(unsigned long);
-		nBitsLeft -= 32;
-	}
-
-	// Read the remaining bytes.
-	while(nBitsLeft >= 8)
-	{
-		WriteUBitLong( *pOut, 8, false );
-		++pOut;
-		nBitsLeft -= 8;
-	}
-	
-	// Read the remaining bits.
-	if(nBitsLeft)
-	{
-		WriteUBitLong( *pOut, nBitsLeft, false );
-	}
-
-	return !IsOverflowed();
-}
-
-
-bool bf_write::WriteBitsFromBuffer( bf_read *pIn, int nBits )
-{
-	// This could be optimized a little by
-	while ( nBits > 32 )
-	{
-		WriteUBitLong( pIn->ReadUBitLong( 32 ), 32 );
-		nBits -= 32;
-	}
-
-	WriteUBitLong( pIn->ReadUBitLong( nBits ), nBits );
-	return !IsOverflowed() && !pIn->IsOverflowed();
-}
-
-
-void bf_write::WriteBitAngle( float fAngle, int numbits )
-{
-	int d;
-	unsigned int mask;
-	unsigned int shift;
-
-	shift = (1<<numbits);
-	mask = shift - 1;
-
-	d = (int)( (fAngle / 360.0) * shift );
-	d &= mask;
-
-	WriteUBitLong((unsigned int)d, numbits);
-}
-
-void bf_write::WriteBitCoord (const float f)
-{
-#if defined( BB_PROFILING )
-	VPROF( "bf_write::WriteBitCoord" );
-#endif
-	int		signbit = (f <= -COORD_RESOLUTION);
-	int		intval = abs(static_cast<int>(f));
-	int		fractval = abs((int)(f*COORD_DENOMINATOR)) & (COORD_DENOMINATOR-1);
-
-
-	// Send the bit flags that indicate whether we have an integer part and/or a fraction part.
-	WriteOneBit( intval );
-	WriteOneBit( fractval );
-
-	if ( intval || fractval )
-	{
-		// Send the sign bit
-		WriteOneBit( signbit );
-
-		// Send the integer if we have one.
-		if ( intval )
-		{
-			// Adjust the integers from [1..MAX_COORD_VALUE] to [0..MAX_COORD_VALUE-1]
-			intval--;
-			WriteUBitLong( (unsigned int)intval, COORD_INTEGER_BITS );
-		}
-		
-		// Send the fraction if we have one
-		if ( fractval )
-		{
-			WriteUBitLong( (unsigned int)fractval, COORD_FRACTIONAL_BITS );
-		}
-	}
-}
-
-void bf_write::WriteBitFloat(float val)
-{
-	long intVal;
-
-	assert(sizeof(long) == sizeof(float));
-	assert(sizeof(float) == 4);
-
-	void *v = &val;
-	intVal = *reinterpret_cast<long *>(v);
-	WriteUBitLong( intVal, 32 );
-}
-
-void bf_write::WriteBitVec3Coord( const Vector& fa )
-{
-	int		xflag, yflag, zflag;
-
-	xflag = (fa[0] >= COORD_RESOLUTION) || (fa[0] <= -COORD_RESOLUTION);
-	yflag = (fa[1] >= COORD_RESOLUTION) || (fa[1] <= -COORD_RESOLUTION);
-	zflag = (fa[2] >= COORD_RESOLUTION) || (fa[2] <= -COORD_RESOLUTION);
-
-	WriteOneBit( xflag );
-	WriteOneBit( yflag );
-	WriteOneBit( zflag );
-
-	if ( xflag )
-		WriteBitCoord( fa[0] );
-	if ( yflag )
-		WriteBitCoord( fa[1] );
-	if ( zflag )
-		WriteBitCoord( fa[2] );
-}
-
-void bf_write::WriteBitNormal( float f )
-{
-	int	signbit = (f <= -NORMAL_RESOLUTION);
-
-	// NOTE: Since +/-1 are valid values for a normal, I'm going to encode that as all ones
-	unsigned int fractval = abs( (int)(f*NORMAL_DENOMINATOR) );
-
-	// clamp..
-	if (fractval > NORMAL_DENOMINATOR)
-		fractval = NORMAL_DENOMINATOR;
-
-	// Send the sign bit
-	WriteOneBit( signbit );
-
-	// Send the fractional component
-	WriteUBitLong( fractval, NORMAL_FRACTIONAL_BITS );
-}
-
-void bf_write::WriteBitVec3Normal( const Vector& fa )
-{
-	int		xflag, yflag;
-
-	xflag = (fa[0] >= NORMAL_RESOLUTION) || (fa[0] <= -NORMAL_RESOLUTION);
-	yflag = (fa[1] >= NORMAL_RESOLUTION) || (fa[1] <= -NORMAL_RESOLUTION);
-
-	WriteOneBit( xflag );
-	WriteOneBit( yflag );
-
-	if ( xflag )
-		WriteBitNormal( fa[0] );
-	if ( yflag )
-		WriteBitNormal( fa[1] );
-	
-	// Write z sign bit
-	int	signbit = (fa[2] <= -NORMAL_RESOLUTION);
-	WriteOneBit( signbit );
-}
-
-void bf_write::WriteBitAngles( const QAngle& fa )
-{
-	// FIXME:
-	Vector tmp( fa.x, fa.y, fa.z );
-	WriteBitVec3Coord( tmp );
-}
-
-void bf_write::WriteChar(int val)
-{
-	WriteSBitLong(val, sizeof(char) << 3);
-}
-
-void bf_write::WriteByte(int val)
-{
-	WriteUBitLong(val, sizeof(unsigned char) << 3);
-}
-
-void bf_write::WriteShort(int val)
-{
-	WriteSBitLong(val, sizeof(short) << 3);
-}
-
-void bf_write::WriteWord(int val)
-{
-	WriteUBitLong(val, sizeof(unsigned short) << 3);
-}
-
-void bf_write::WriteLong(long val)
-{
-	WriteSBitLong(val, sizeof(long) << 3);
-}
-
-void bf_write::WriteFloat(float val)
-{
-	WriteBits(&val, sizeof(val) << 3);
-}
-
-bool bf_write::WriteBytes( const void *pBuf, int nBytes )
-{
-	return WriteBits(pBuf, nBytes << 3);
-}
-
-bool bf_write::WriteString(const char *pStr)
-{
-	if(pStr)
-	{
-		do
-		{
-			WriteChar( *pStr );
-			++pStr;
-		} while( *(pStr-1) != 0 );
-	}
-	else
-	{
-		WriteChar( 0 );
-	}
-
-	return !IsOverflowed();
-}
 
 // ---------------------------------------------------------------------------------------- //
 // bf_read
@@ -569,10 +133,6 @@ unsigned int bf_read::CheckReadUBitLong(int numbits)
 
 bool bf_read::ReadBits(void *pOutData, int nBits)
 {
-#if defined( BB_PROFILING )
-	VPROF( "bf_write::ReadBits" );
-#endif
-
 	unsigned char *pOut = (unsigned char*)pOutData;
 	int nBitsLeft = nBits;
 
@@ -690,7 +250,6 @@ unsigned int bf_read::ReadUBitVar()
 	return data;
 }
 
-
 unsigned int bf_read::ReadBitLong(int numbits, bool bSigned)
 {
 	if(bSigned)
@@ -699,13 +258,9 @@ unsigned int bf_read::ReadBitLong(int numbits, bool bSigned)
 		return ReadUBitLong(numbits);
 }
 
-
 // Basic Coordinate Routines (these contain bit-field size AND fixed point scaling constants)
 float bf_read::ReadBitCoord (void)
 {
-#if defined( BB_PROFILING )
-	VPROF( "bf_write::ReadBitCoord" );
-#endif
 	int		intval=0,fractval=0,signbit=0;
 	float	value = 0.0;
 
@@ -889,25 +444,6 @@ bool bf_read::ReadString( char *pStr, int maxLen, bool bLine, int *pOutNumChars 
 
 	return !IsOverflowed() && !bTooSmall;
 }
-
-
-char* bf_read::ReadAndAllocateString( bool *pOverflow )
-{
-	char str[2048];
-	
-	int nChars;
-	bool bOverflow = !ReadString( str, sizeof( str ), false, &nChars );
-	if ( pOverflow )
-		*pOverflow = bOverflow;
-
-	// Now copy into the output and return it;
-	char *pRet = new char[ nChars + 1 ];
-	for ( int i=0; i <= nChars; i++ )
-		pRet[i] = str[i];
-
-	return pRet;
-}
-
 	
 bool bf_read::Seek(int iBit)
 {
@@ -928,25 +464,4 @@ bool bf_read::Seek(int iBit)
 		m_iCurBit = iBit;
 		return true;
 	}
-}
-
-void bf_read::ExciseBits( int startbit, int bitstoremove )
-{
-	int endbit = startbit + bitstoremove;
-	int remaining_to_end = m_nDataBits - endbit;
-
-	bf_write temp;
-	temp.StartWriting( (void *)m_pData, m_nDataBits << 3, startbit );
-
-	Seek( endbit );
-
-	for ( int i = 0; i < remaining_to_end; i++ )
-	{
-		temp.WriteOneBit( ReadOneBit() );
-	}
-
-	Seek( startbit );
-	
-	m_nDataBits -= bitstoremove;
-	m_nDataBytes = m_nDataBits >> 3;
 }
