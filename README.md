@@ -28,7 +28,7 @@ Other features include:
 cssff is only for Windows, and it only supports demos that are compatible with CS:S v34 (build 4044). Demos from the Steam version or v77 of CS:S are NOT supported. This is because the program was meant for editors/moviemakers to help them find new content for their projects, and CS:S versions past v34 have never been popular for that purpose.
 
 ## How to build
-The project should not require any outside libraries, but C++ 20 features are used. A solution file for Visual Studio 2022 is included, which can be used to build the project.
+The project should not require any outside libraries, but C++ 20 features are used. A solution file for Visual Studio 2022 is included, which can be used to build the project. When building, the target platform should be set to Win32 (x86).
 
 ## How to use
 cssff is simple to use. You can simply drag and drop demo files or folders onto the executable to process them. When multiple demos are processed, an output file is always written either to the program folder or demo directory depending on the settings used. When processing a single demo, more information about the demo is displayed inside the program window, including information about the found frags. The program can also be run from the command prompt, but do note that there are no special arguments that would make this necessary.
