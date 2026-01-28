@@ -3,7 +3,7 @@
 #include "Common.h"
 #include "Settings.h"
 
-std::vector< ParsingWarning_t > g_WarningDemos;		// Filenames and the warning numbers of demos where a warning was triggered
+std::vector< ParsingWarning_t > g_WarningDemos;
 
 // Textual representation of the warnings
 // These match the WarningType enum
@@ -29,22 +29,7 @@ ParsingError_t::ParsingError_t( const char *msg )
 		at_end_of_demo = GetNumBytesLeft() <= maxBytesLeft;
 	}
 
-	if( !Settings()->BatchProcessingEnabled() )
-	{
-		if( at_end_of_demo )
-			printf( "Done parsing!\n\n" );
-		else
-			printf( "Error encountered!\n\n" );
-	}
-	else
-	{
-		if( at_end_of_demo )
-			printf( " Successfully parsed" );
-		else
-			printf( " Error encountered" );
-	}
-
-	OnParsingEnd();
+	OnParsingEnd( at_end_of_demo? DONE : ERROR, this );
 }
 
 ParsingWarning_t::ParsingWarning_t( const std::string &_demoname, WarningType _type )
@@ -53,10 +38,9 @@ ParsingWarning_t::ParsingWarning_t( const std::string &_demoname, WarningType _t
 	count( 1 ),
 	tick( GetCurrentTick() )
 {
-
 }
 
-void ParsingWarning_t::GetString( std::string &buffer, bool prepend_demoname )
+void ParsingWarning_t::GetString( std::string &buffer, bool prepend_demoname ) const
 {
 	buffer = "";
 

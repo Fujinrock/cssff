@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Entities.h"
 #include "bitbuf.h"
 
@@ -146,7 +146,7 @@ inline Prop_t *DecodeProp( bf_read &reader, FlattenedPropEntry *pFlattenedProp, 
 	Prop_t *pResult = nullptr;
 	if ( pSendProp->m_propType != DPT_Array && pSendProp->m_propType != DPT_DataTable )
 	{
-		pResult = new Prop_t( ( SendPropType )( pSendProp->m_propType ) );
+		pResult = new Prop_t( pSendProp->m_propType );
 	}
 
 	switch ( pSendProp->m_propType )

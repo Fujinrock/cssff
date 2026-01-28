@@ -8,6 +8,18 @@
 #include "DataTables.h"
 #include "bitbuf.h"
 
+struct ParsingError_t;
+
+/**
+ * Different ways the parsing process can be terminated
+ */
+enum ParsingResult 
+{ 
+	DONE,
+	ERROR,
+	ABORTED
+};
+
 /**
  * Parses the raw data of a demo file
  * Should only be used to parse one demo
@@ -19,6 +31,9 @@ public:
 	~DemoParser();
 
 	bool Parse( void );								///< Parses the demo
+	void OnParsingEnd(								///< Called when the parsing process is terminated
+		ParsingResult result,
+		ParsingError_t *pError = nullptr );
 
 	float GetTimeBetweenTicks( int, int ) const;	///< Get the time in seconds between two chosen ticks
 	int GetTickCount( void ) const;					///< Get the # of ticks in the demo
@@ -26,7 +41,7 @@ public:
 	int GetTickRate( void ) const;					///< Get the # of ticks per second
 	int GetNumBytesLeft( void ) const;				///< Get the # of bytes left in the demo that haven't been read
 	int GetNumFragsFound( void ) const;				///< Get the # of frags found in the demo
-	void OnParsingEnd( void );						///< Called when demo is successfully parsed or a parsing error is thrown
+
 
 private:
 	// ===== Frags =================================================================================================
@@ -162,6 +177,10 @@ private:
 	// For early termination (these messages can appear again on map change at the end of a POV demo or if something went wrong)
 	bool				m_bServerInfoEncountered;		///< Whether SVC_ServerInfo was encountered while parsing the demo
 	bool				m_bGameEventListEncountered;	///< Whether SVC_GameEventList was encountered while parsing the demo
+
+	// For printing the progress bar
+	int					m_iMaxProgressBarDots;			///< How many dots will be printed if the demo is successfully parsed
+	int					m_iProgressBarDotsPrinted;		///< How many dots have been printed so far
 
 	DemoFile *			m_pDemo;						///< The demo being parsed
 	bf_read				m_reader;						///< The main reader that keeps track of how much of the demo has been parsed

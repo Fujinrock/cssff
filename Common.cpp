@@ -1,4 +1,4 @@
-#include "Common.h"
+﻿#include "Common.h"
 #include "DemoParser.h"
 #include <algorithm>
 #include <Windows.h>
@@ -112,11 +112,11 @@ int GetNumBytesLeft( void )
 	return gpParser->GetNumBytesLeft();
 }
 
-void OnParsingEnd( void )
+void OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 {
 	assert( gpParser );
 
-	gpParser->OnParsingEnd();
+	gpParser->OnParsingEnd( result, pError );
 }
 
 // ===== QAngle ==========================================================================================

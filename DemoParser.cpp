@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include <conio.h>
 #include <fstream>
+#include <format>
 
 DemoParser *gpParser = nullptr;
 
@@ -11,6 +12,7 @@ extern std::string g_ProgramDirectory;
 extern std::string g_BatchDirectory;
 extern std::string g_BatchOutput;
 extern std::vector< ParsingWarning_t > g_WarningDemos;
+extern std::vector< std::string > g_FailedDemos;
 
 DemoParser::DemoParser( DemoFile *pDemo )
 {
@@ -38,6 +40,9 @@ DemoParser::DemoParser( DemoFile *pDemo )
 
 	m_iServerClassBits = 0;
 	m_iNumStringTables = 0;
+
+	m_iMaxProgressBarDots = Settings()->BatchProcessingEnabled()? 5 : 10;
+	m_iProgressBarDotsPrinted = 0;
 
 	memset( &m_PropIndices, 0, sizeof( m_PropIndices ) );
 	memset( &m_StringTables, 0, sizeof( m_StringTables ) );
@@ -83,11 +88,9 @@ bool DemoParser::Parse( void )
 	bool bSynced = false;	// Was sync tick encountered yet?
 
 	// Set up the progress bar
-	const int numProgressDots = Settings()->BatchProcessingEnabled()? 5 : 10;
-	const int printProgressTicks = (m_demoHeader.playback_ticks > 0)? (m_demoHeader.playback_ticks / numProgressDots) : (250'000 / numProgressDots);
-	int lastTick = 0;
-	int progressTick = 0;
-	int numPrinted = 0;
+	const int iProgressBarTickInterval = (m_demoHeader.playback_ticks > 0)? (m_demoHeader.playback_ticks / m_iMaxProgressBarDots) : (500'000 / m_iMaxProgressBarDots);
+	int iLastTick = 0;
+	int iTicksProgressed = 0;
 
 
 	// ===== The main parsing loop ===========================================================================
@@ -110,13 +113,13 @@ bool DemoParser::Parse( void )
 		// Print dots for the progress bar
 		if( bSynced )
 		{
-			progressTick += m_iCurrentTick - lastTick;
-			lastTick = m_iCurrentTick;
-			if( progressTick >= printProgressTicks )
+			iTicksProgressed += m_iCurrentTick - iLastTick;
+			iLastTick = m_iCurrentTick;
+			if( iTicksProgressed >= iProgressBarTickInterval )
 			{
 				printf( "." );
-				++numPrinted;
-				progressTick = 0;
+				++m_iProgressBarDotsPrinted;
+				iTicksProgressed = 0;
 			}
 		}
 
@@ -187,32 +190,8 @@ bool DemoParser::Parse( void )
 		}
 	}
 
-	// Print the ending for the progress bar
-	const int numMinPrints = bAborted? 3 : numProgressDots;
-
-	if( numPrinted < numMinPrints )
-	{
-		for( int i = 0; i < numMinPrints - numPrinted; ++i )
-			printf( "." );
-	}
-
-	if( Settings()->BatchProcessingEnabled() )
-	{
-		if( bAborted )
-			printf( " Parsing aborted by user" );
-		else
-			printf( " Successfully parsed" );
-	}
-	else
-	{
-		if( bAborted )
-			printf( "Parsing aborted by user!\n\tNot all frags have necessarily been found.\n\n" );
-		else
-			printf( "Done parsing!\n\n" );
-	}
-
 	// Do post-parsing stuff
-	DemoParser::OnParsingEnd();
+	DemoParser::OnParsingEnd( bAborted? ABORTED : DONE );
 
 	return !bAborted;
 }
@@ -271,42 +250,81 @@ int DemoParser::GetNumFragsFound( void ) const
 /**
  * Prints demo's found frags into the console and adds the frag description into the output buffer
  */
-void DemoParser::OnParsingEnd( void )
+void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 {
 	// Check for frags again in case the demo ended mid-round
 	FindRoundFrags();
 
-	if( !Settings()->BatchProcessingEnabled() )
+	// Print the rest of the progress bar
+	const int iMinProgressBarDots = (result != DONE) ? 3 : m_iMaxProgressBarDots;
+
+	if( m_iProgressBarDotsPrinted < iMinProgressBarDots )
 	{
-		if( g_WarningDemos.size() )
-		{
-			printf( "\n========== WARNINGS ==========\n\n" );
-
-			for( size_t i = 0; i < g_WarningDemos.size(); ++i )
-			{
-				std::string warning;
-				g_WarningDemos[i].GetString( warning, false );
-
-				char szFailBuffer[300];
-				_snprintf_s( szFailBuffer, sizeof( szFailBuffer ), sizeof( szFailBuffer ), "- %s\n", warning.c_str() );
-				printf( szFailBuffer );
-			}
-
-			printf( "\n" );
-		}
+		for( int i = 0; i < iMinProgressBarDots - m_iProgressBarDotsPrinted; ++i )
+			printf( "." );
 	}
 
-	if( m_Frags.size() > 0 )
+	// Add this demo to the parsing error list if there was an error
+	if( result == ERROR && pError )
 	{
-		if( Settings()->BatchProcessingEnabled() )
+		std::string sError = std::format( "{}: {} on tick {}\n", m_pDemo->GetFileName(), pError->error_msg, pError->tick );
+		g_FailedDemos.emplace_back( sError );
+	}
+
+	// Print the appropriate ending message
+	if( Settings()->BatchProcessingEnabled() )
+	{
+		if( result == DONE )
+			printf( " Successfully parsed" );
+		else if( result == ERROR )
+			printf( " Error encountered" );
+		else
+			printf( " Parsing aborted by user" );
+	}
+	else
+	{
+		if( result == DONE )
+			printf( "Done parsing!\n\n\n" );
+		else if( result == ERROR )
+			printf( "Error encountered!\n\n\n" );
+		else
+			printf( "Parsing aborted by user!\n\tNot all frags have necessarily been found.\n\n\n" );
+	}
+
+	// Add frag info to batch output if we're batch processing
+	if( Settings()->BatchProcessingEnabled() )
+	{
+		if( m_Frags.empty() )
 		{
-			printf( " (%d frag%s found)\n", m_Frags.size(), m_Frags.size() > 1? "s":"" );
-			g_BatchOutput += "========== " + m_pDemo->GetFileName() + ( m_bIsPOV ? " (POV)" : " (STV)" ) + " ==========\n\n";
+			printf( " (no frags found)\n" );
+			return;
 		}
 
+		printf( " (%d frag%s found)\n", m_Frags.size(), m_Frags.size() > 1? "s":"" );
+		g_BatchOutput 
+			+= "========== "
+			+ m_pDemo->GetFileName()
+			+ " ("
+			+ (m_bIsPOV ? "POV" : "STV")
+			+ " @ "
+			+ m_demoHeader.mapname
+			+ ") ==========\n\n";
+
+		for( const Frag &frag : m_Frags )
+		{
+			char szFragDescription[ 1024 ];
+			frag.GetStringRepresentation( szFragDescription, sizeof(szFragDescription) );
+			g_BatchOutput += szFragDescription;
+		}
+	}
+	else // Not batch processing - print output to console and write to file if need be
+	{
+		// TODO: Make all the program's file writing logic uniform and in one place
+		// (Header is not currently written)
 		std::ofstream file_output;
 		std::string filename;
-		const bool bDumpToFile = Settings()->DumpToFileEnabled() && !Settings()->BatchProcessingEnabled();
+		std::string buffer;
+		const bool bDumpToFile = Settings()->DumpToFileEnabled() && (!g_WarningDemos.empty() || !g_FailedDemos.empty() || !m_Frags.empty());
 
 		if( bDumpToFile )
 		{
@@ -322,29 +340,78 @@ void DemoParser::OnParsingEnd( void )
 			{
 				file_output.open( g_ProgramDirectory + filename, std::ios::binary );
 			}
-		}
 
-		if( !Settings()->BatchProcessingEnabled() )
-			printf( "\n========== FOUND FRAGS ==========\n\n" );
-
-		for( uint32 i = 0; i < m_Frags.size(); ++i )
-		{
-			char szFragDescription[ 1024 ];
-			m_Frags[ i ].GetStringRepresentation( szFragDescription, sizeof(szFragDescription) );
-
-			if( !Settings()->BatchProcessingEnabled() )
+			if( file_output.is_open() )
 			{
-				printf( szFragDescription );
+				WRITE_UTF8_BOM( file_output );
 
-				if( Settings()->DumpToFileEnabled() && file_output.is_open() )
+				// Write the singular error in to the file
+				if( result == ERROR && pError )
 				{
-					WRITE_UTF8_BOM( file_output );
-					file_output.write( szFragDescription, strlen( szFragDescription ) );
+					buffer = std::format( "PARSING ERROR: {} on tick {}\n\n", pError->error_msg, pError->tick );
+					file_output.write( buffer.c_str(), buffer.length() );
 				}
 			}
-			else
+		}
+
+		// Print/write warnings
+		if( !g_WarningDemos.empty() )
+		{
+			printf( "========== WARNINGS ==========\n\n" );
+
+			if( bDumpToFile && file_output.is_open() )
 			{
-				g_BatchOutput += szFragDescription;
+				buffer = "WARNINGS:\n";
+				file_output.write( buffer.c_str(), buffer.length() );
+			}
+
+			for( const ParsingWarning_t &warning : g_WarningDemos )
+			{
+				std::string sWarning;
+				warning.GetString( sWarning, false );
+
+				buffer = std::format( "- {}", sWarning );
+				printf( buffer.c_str() );
+
+				if( bDumpToFile && file_output.is_open() )
+				{
+					file_output.write( buffer.c_str(), buffer.length() );
+				}
+			}
+
+			printf( "\n\n" );
+
+			if( bDumpToFile && file_output.is_open() )
+				file_output.write( "\n", 1 );
+		}
+
+		printf( "========== FOUND FRAGS ==========\n\n" );
+
+		if( bDumpToFile && file_output.is_open() )
+			file_output.write( "FOUND FRAGS:\n\n", 14 );
+
+		// Print/write frags
+		if( m_Frags.empty() )
+		{
+			buffer = "No frags found with the used settings.";
+
+			if( bDumpToFile && file_output.is_open() )
+				file_output.write( buffer.c_str(), buffer.length() );
+
+			buffer += "\n\n";
+
+			printf( buffer.c_str() );
+		}
+		else
+		{
+			for( const Frag &frag : m_Frags )
+			{
+				char szFragDescription[ 1024 ];
+				frag.GetStringRepresentation( szFragDescription, sizeof(szFragDescription) );
+				printf( szFragDescription );
+
+				if( bDumpToFile && file_output.is_open() )
+					file_output.write( szFragDescription, strlen( szFragDescription ) );
 			}
 		}
 
@@ -360,17 +427,6 @@ void DemoParser::OnParsingEnd( void )
 			{
 				printf( "Failed to write output to file\n\n" );
 			}
-		}
-	}
-	else
-	{
-		if( Settings()->BatchProcessingEnabled() )
-		{
-			printf( " (no frags found)\n" );
-		}
-		else
-		{
-			printf( "\nNo frags found with the current settings.\n\n" );
 		}
 	}
 }

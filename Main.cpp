@@ -12,12 +12,12 @@
 #include <fstream>
 #include <format>
 
-std::string g_ProgramDirectory;						///< Program executable directory (with '\' in the end)
-std::string g_BatchDirectory;						///< Directory of the batch to be processed (with '\' in the end)
-std::string g_BatchOutput;							///< Buffer where all the found frags will be written during batch processing
-static std::vector< std::string > s_DemosToParse;	///< Filenames of all the demos that will be parsed
-static std::vector< std::string > g_FailedDemos;	///< Filenames of the demos that failed to parse and their error messages
-extern std::vector< ParsingWarning_t > g_WarningDemos;
+std::string g_ProgramDirectory;							///< Program executable directory (with '\' in the end)
+std::string g_BatchDirectory;							///< Directory of the batch to be processed (with '\' in the end)
+std::string g_BatchOutput;								///< Buffer where all the found frags will be written during batch processing
+std::vector< std::string > g_FailedDemos;				///< Filenames of the demos that failed to parse and their error messages
+static std::vector< std::string > s_DemosToParse;		///< Filenames of all the demos that will be parsed
+extern std::vector< ParsingWarning_t > g_WarningDemos;	///< Filenames and the warning numbers of demos where a warning was triggered
 
 /**
  * Populates the parsing list with demos in the specified directory
@@ -362,7 +362,7 @@ int main( int argc, char *argv[] )
 
 	if( Settings()->BatchProcessingEnabled() )
 	{
-		g_BatchOutput.reserve( 512 );
+		g_BatchOutput.reserve( 1024 );
 		printf( "%s: Batch processing %d demos...\n", CSSFF_NAME, nDemosToParse );
 		printf( "Press 'Q' to abort the process\n\n" );
 	}
@@ -378,9 +378,7 @@ int main( int argc, char *argv[] )
 			printf( "Demo %d/%d: ", nDemo+1, nDemosToParse );
 		}
 
-		const char *szCurrentDemo = s_DemosToParse[ nDemo ].c_str();
-
-		DemoFile demo( szCurrentDemo );
+		DemoFile demo( s_DemosToParse[ nDemo ] );
 
 		if( !demo.IsValidDemo() )
 		{
@@ -416,11 +414,6 @@ int main( int argc, char *argv[] )
 			if( Settings()->BatchProcessingEnabled() )
 			{
 				printf( " L Error encountered on tick %d - parsing aborted (%s)\n", error.tick, error.error_msg );
-				char szTempError[ MAX_PATH ];
-				std::string strFilename = szCurrentDemo;
-				RemoveFileNameFolders( strFilename );
-				_snprintf_s( szTempError, sizeof(szTempError), sizeof(szTempError), "%s: %s on tick %d\n", strFilename.c_str(), error.error_msg, error.tick );
-				g_FailedDemos.emplace_back( szTempError );
 			}
 			else
 			{

@@ -29,7 +29,7 @@ struct ParsingWarning_t
 {
 	ParsingWarning_t( const std::string &_demoname, WarningType _type );
 
-	void GetString( std::string &buffer, bool prepend_demoname = true );
+	void GetString( std::string &buffer, bool prepend_demoname = true ) const;
 
 	std::string demoname;
 	WarningType type;

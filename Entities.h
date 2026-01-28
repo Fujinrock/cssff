@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common.h"
 #include <vector>
@@ -170,7 +170,7 @@ struct PropEntry
 
 struct EntityEntry
 {
-	EntityEntry( int nEntity, uint32 uClass, uint32 uSerialNum)
+	EntityEntry( int nEntity, uint32 uClass, uint32 uSerialNum )
 		: m_nEntity( nEntity )
 		, m_uClass( uClass )
 		, m_uSerialNum( uSerialNum )
@@ -179,7 +179,7 @@ struct EntityEntry
 
 	~EntityEntry()
 	{
-		for ( std::vector< PropEntry * >::iterator i = m_props.begin(); i != m_props.end(); ++i )
+		for( auto i = m_props.begin(); i != m_props.end(); ++i )
 		{
 			delete *i;
 		}
@@ -187,10 +187,10 @@ struct EntityEntry
 
 	PropEntry *FindProp( const char *pName )
 	{
-		for ( std::vector< PropEntry * >::iterator i = m_props.begin(); i != m_props.end(); ++i )
+		for( auto i = m_props.begin(); i != m_props.end(); ++i )
 		{
 			PropEntry *pProp = *i;
-			if ( strcmp( pProp->m_pFlattenedProp->m_prop->m_propName, pName ) == 0 )
+			if( strcmp( pProp->m_pFlattenedProp->m_prop->m_propName, pName ) == 0 )
 			{
 				return pProp;
 			}
@@ -201,7 +201,7 @@ struct EntityEntry
 	void AddOrUpdateProp( FlattenedPropEntry *pFlattenedProp, Prop_t *pPropValue )
 	{
 		PropEntry *pProp = FindProp( pFlattenedProp->m_prop->m_propName );
-		if ( pProp )
+		if( pProp )
 		{
 			if( pFlattenedProp->m_prop->m_propType == DPT_Array )
 				delete[] pProp->m_pPropValue;

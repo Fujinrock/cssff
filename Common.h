@@ -2,7 +2,7 @@
 
 #include <string>
 
-#define	CSSFF_NAME					"CSSFF v2.1.13"
+#define	CSSFF_NAME					"CSSFF v2.1.14"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_HEADER_ID_GOLDSRC		"HLDEMO"
@@ -43,6 +43,9 @@ typedef unsigned __int32			uint32;
 typedef __int64						int64;
 typedef unsigned long				CRC32_t;
 
+enum ParsingResult;
+struct ParsingError_t;
+
 double Log2( double n );
 
 void TrimString( std::string &s );
@@ -57,7 +60,7 @@ int GetTotalTickCount( void );
 int GetCurrentTick( void );
 int GetTickRate( void );
 int GetNumBytesLeft( void );
-void OnParsingEnd( void );
+void OnParsingEnd( ParsingResult result, ParsingError_t *pError = nullptr );
 
 struct QAngle
 {
