@@ -38,6 +38,16 @@ enum MultiKillFragType
 };
 
 /**
+ * For storing time intervals between certain types of kills
+ * Used for ticking multiple instances of a frag if one instance wasn't good enough to be ticked on its own
+ */
+struct frag_delta_times_t
+{
+	float time_to_closest_wallbang;
+	float time_to_closest_jumpshot;
+};
+
+/**
  * Descriptor for all the 1k frags and collaterals
  */
 struct frag_descriptor_t
@@ -107,7 +117,7 @@ public:
 	bool AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID *weapons, short num_weapons, uint32 start_tick, uint32 end_tick, short headshots, bool is_stationary );
 
 	// Add a descriptor for a 1k/collat frag
-	void AddFragDescriptor( uint32 tick, unsigned short type_flags, short teamkills, short headshots, CSWeaponID weapon, float distance, float flickangle, float time_to_closest_kill );
+	void AddFragDescriptor( uint32 tick, unsigned short type_flags, short teamkills, short headshots, CSWeaponID weapon, float distance, float flickangle, const frag_delta_times_t &dtimes );
 
 	bool IsValidFrag( void ) const;
 

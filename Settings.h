@@ -6,6 +6,7 @@
 enum MultiKillFragType;
 enum CSWeaponID;
 enum CSWeaponCategory;
+struct frag_delta_times_t;
 typedef int SettingsCategory;
 typedef const char *Key;
 
@@ -22,7 +23,7 @@ public:
 
 	// Check if the flags indicate any frags that should be ticked for the given weapon
 	// Also checks for minimum distance, minimum headshots etc.
-	bool ShouldTickFrag( unsigned short type_flags, CSWeaponID weapon, float distance, short headshots, float time_to_closest_kill );
+	bool ShouldTickFrag( unsigned short type_flags, CSWeaponID weapon, float distance, short headshots, const frag_delta_times_t &dtimes );
 
 	bool BatchProcessingEnabled( void );
 	void DisableBatchProcessing( void );
@@ -52,7 +53,8 @@ private:
 	bool ShouldTickFrag( Key tick_key, Key only_hs_key, bool bIsHeadshot );
 	bool ShouldTickFrag( Key tick_key, Key min_dist_key, Key min_dist_hs_mod_key, Key min_dist_wb_mod_key, float fDistance, bool bIsHeadshot, bool bIsWallbang );
 	bool ShouldTickCollat( CSWeaponCategory category, Key tick_key, Key min_hs_key, short headshots, Key ignore_min_hs_key, bool bMayIgnoreMinHs );
-	bool WallbangIsCloseToAnotherKill( CSWeaponID weapon, float time_to_closest_kill );
+	bool WallbangIsCloseToAnotherWallbang( CSWeaponID weapon, float time_to_closest_wb );
+	bool JumpshotIsCloseToAnotherJumpshot( CSWeaponID weapon, float time_to_closest_js );
 
 	union setting_value
 	{

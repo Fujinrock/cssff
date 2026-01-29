@@ -74,57 +74,81 @@ bool TryToAddMultiKillFragDescriptor( Frag &frag, MultiKillFragType frag_type, c
 
 // =====================================================================================================================================================================
 
-float GetDeltaTimeToClosestKill( const Player *pPlayer, int killIdx )
+bool KillIsValidForDeltaTime( const kill_info_t &kill, const kill_info_t &start_kill, unsigned short flags )
 {
-	int tick = pPlayer->GetKill( killIdx ).tick;
-	CSWeaponID weapon = pPlayer->GetKill( killIdx ).weaponID;
-	int closestTickBefore = 999999999;
-	int closestTickAfter = 999999999;
-	int tickDeltaToBefore = 999999999;
-	int tickDeltaToAfter = 999999999;
+	if( kill.teamkill )
+		return false;
 
-	// Check earlier kill
+	if( kill.tick == start_kill.tick && kill.weaponID == start_kill.weaponID )
+		return false;
+
+	if( !flags // Anything goes if no flags are set
+	|| (flags & FL_KILL_JUMPSHOT) && kill.midair_status == JUMPSHOT
+	|| (flags & FL_KILL_LADDERSHOT) && kill.midair_status == LADDERSHOT
+	|| (flags & FL_KILL_WALLBANG) && kill.penetrated
+	|| (flags & FL_KILL_FLICKSHOT) && kill.flickshot
+	|| (flags & FL_KILL_WALLBANG) && kill.penetrated
+	|| (flags & FL_KILL_NOSCOPE) && kill.noscope )
+		return true;
+
+	return false;
+}
+
+// =====================================================================================================================================================================
+
+float GetDeltaTimeToClosestKillWithFlags( const Player *pPlayer, const int killIdx, unsigned short flags )
+{
+	const kill_info_t &start_kill = pPlayer->GetKill( killIdx );
+	int closestTickBefore = -1;
+	int closestTickAfter = -1;
+	int tickDeltaToBefore = -1;
+	int tickDeltaToAfter = -1;
+
+	// Check earlier kills
 	int idxCopy = killIdx;
 	while( --idxCopy >= 0 )
 	{
 		const kill_info_t &kill = pPlayer->GetKill( idxCopy );
 
-		if( kill.teamkill )
-			continue;
-
-		if( kill.tick == tick && kill.weaponID == weapon )
+		if( !KillIsValidForDeltaTime( kill, start_kill, flags ) )
 			continue;
 
 		closestTickBefore = kill.tick;
-		tickDeltaToBefore = abs( tick - closestTickBefore );
+		tickDeltaToBefore = abs( start_kill.tick - closestTickBefore );
 		break;
 	}
 
-	// Check kill after
+	// Check kills after
 	idxCopy = killIdx;
 	while( ++idxCopy < pPlayer->GetNumKills() )
 	{
 		const kill_info_t &kill = pPlayer->GetKill( idxCopy );
 
-		if( kill.teamkill )
-			continue;
-
-		if( kill.tick == tick && kill.weaponID == weapon )
+		if( !KillIsValidForDeltaTime( kill, start_kill, flags ) )
 			continue;
 
 		closestTickAfter = kill.tick;
-		tickDeltaToAfter = abs( tick - closestTickAfter );
+		tickDeltaToAfter = abs( start_kill.tick - closestTickAfter );
 		break;
 	}
 
-	// Return shorter time
+	if( tickDeltaToBefore < 0 && tickDeltaToAfter < 0 )
+		return -1.f;
+
+	if( tickDeltaToBefore < 0 )
+		return GetTimeBetweenTicks( start_kill.tick, closestTickAfter );
+
+	if( tickDeltaToAfter < 0 )
+		return GetTimeBetweenTicks( start_kill.tick, closestTickBefore );
+
+	// Suitable kills on both sides - return shorter time
 	if( tickDeltaToBefore < tickDeltaToAfter )
 	{
-		return GetTimeBetweenTicks( tick, closestTickBefore );
+		return GetTimeBetweenTicks( start_kill.tick, closestTickBefore );
 	}
 	else
 	{
-		return GetTimeBetweenTicks( tick, closestTickAfter );
+		return GetTimeBetweenTicks( start_kill.tick, closestTickAfter );
 	}
 }
 
@@ -190,7 +214,6 @@ void DemoParser::FindRoundFrags( void )
 			short kills_on_tick = 1;
 			short teamkills = kill->teamkill? 1 : 0;
 			short headshots = kill->headshot? 1 : 0;
-			float time_to_closest_kill = (kill->penetrated? GetDeltaTimeToClosestKill( &(*p), k ) : 0.f);
 			float longest_distance = kill->distance;
 			bool blind = kill->blind;
 
@@ -257,7 +280,11 @@ void DemoParser::FindRoundFrags( void )
 				if( blind )	// Don't tick if only this flag was set
 					type_flags |= FL_KILL_BLIND;
 
-				player_frag.AddFragDescriptor( kill->tick, type_flags, teamkills, headshots, kill->weaponID, longest_distance, kill->flickangle, time_to_closest_kill );
+				frag_delta_times_t dtimes;
+				dtimes.time_to_closest_wallbang = (kill->penetrated? GetDeltaTimeToClosestKillWithFlags( &(*p), k, FL_KILL_WALLBANG ) : -1.f);
+				dtimes.time_to_closest_jumpshot = (kill->midair_status != ON_GROUND? GetDeltaTimeToClosestKillWithFlags( &(*p), k, FL_KILL_JUMPSHOT|FL_KILL_LADDERSHOT ) : -1.f);
+
+				player_frag.AddFragDescriptor( kill->tick, type_flags, teamkills, headshots, kill->weaponID, longest_distance, kill->flickangle, dtimes );
 			}
 		}
 
@@ -686,7 +713,7 @@ bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID 
 
 	float frag_length = GetTimeBetweenTicks( start_tick, end_tick );
 
-	if( frag_length <= 0 ) // If all kills were on 1 tick, it should be ticked as a collat
+	if( frag_length == 0.f ) // If all kills were on 1 tick, it should be ticked as a collat
 		return false;
 
 	// Check if we can change an already existing descriptor
@@ -739,7 +766,7 @@ bool Frag::AddMultiKillFragDescriptor( MultiKillFragType type, const CSWeaponID 
 
 // =====================================================================================================================================================================
 
-void Frag::AddFragDescriptor( uint32 tick, unsigned short type_flags, short teamkills, short headshots, CSWeaponID weapon, float distance, float flickangle, float time_to_closest_kill )
+void Frag::AddFragDescriptor( uint32 tick, unsigned short type_flags, short teamkills, short headshots, CSWeaponID weapon, float distance, float flickangle, const frag_delta_times_t &dtimes )
 {
 	assert( (type_flags & ~FL_KILL_BLIND) != 0 );
 
@@ -761,7 +788,7 @@ void Frag::AddFragDescriptor( uint32 tick, unsigned short type_flags, short team
 	// but separate descriptors are not necessarily added depending on the settings
 	if( !in_multikill_frag )
 	{
-		if( !Settings()->ShouldTickFrag( type_flags, weapon, distance, headshots, time_to_closest_kill ) )
+		if( !Settings()->ShouldTickFrag( type_flags, weapon, distance, headshots, dtimes ) )
 			return;
 	}
 

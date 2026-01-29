@@ -67,9 +67,11 @@ extern std::string g_BatchDirectory;
 #define KEY_JUMPSHOT_MIN_DISTANCE				"jumpshot_min_distance"
 #define KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD		"jumpshot_min_distance_hs_modifier"
 #define KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD		"jumpshot_min_distance_wb_modifier"
+#define KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE		"jumpshot_always_tick_multiple"
+#define KEY_JUMPSHOT_MULTIPLE_MAX_DT			"jumpshot_multiple_max_delta_time"
 #define KEY_WALLBANG_HEADSHOT_ONLY				"wallbang_headshot_only"
-#define KEY_WALLBANG_REQUIRE_ANOTHER_KILL		"wallbang_require_another_kill"
-#define KEY_WALLBANG_ANOTHER_KILL_MAX_DT		"wallbang_another_kill_max_delta_time"
+#define KEY_WALLBANG_REQUIRE_TWO				"wallbang_require_two"
+#define KEY_WALLBANG_ANOTHER_WB_MAX_DT			"wallbang_another_wallbang_max_delta_time"
 #define KEY_FLICKSHOT_MAX_DURATION				"flickshot_max_duration"
 #define KEY_FLICKSHOT_HEADSHOT_ONLY				"flickshot_headshot_only"
 #define KEY_FLICKSHOT_MIN_DISTANCE				"flickshot_min_distance"
@@ -180,8 +182,8 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_TICK_FLICKSHOTS ].m_bool = true;
 	general_settings[ KEY_TICK_WALLBANGS ].m_bool = true;
 	general_settings[ KEY_WALLBANG_HEADSHOT_ONLY ].m_bool = true;
-	general_settings[ KEY_WALLBANG_REQUIRE_ANOTHER_KILL ].m_bool = true;
-	general_settings[ KEY_WALLBANG_ANOTHER_KILL_MAX_DT ].m_float = 2.0;
+	general_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool = true;
+	general_settings[ KEY_WALLBANG_ANOTHER_WB_MAX_DT ].m_float = 4.0;
 	general_settings[ KEY_TICK_FRAGS_VS_BOTS ].m_bool = false;
 	general_settings[ KEY_TICK_FRAGS_BY_BOTS ].m_bool = true;
 	general_settings[ KEY_5K_MAX_TIME ].m_float = -1.f;
@@ -217,6 +219,8 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_JUMPSHOT_MIN_DISTANCE ].m_float = 1000.f;
 	general_settings[ KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD ].m_float = 0.5f;
 	general_settings[ KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD ].m_float = 0.5f;
+	general_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool = true;
+	general_settings[ KEY_JUMPSHOT_MULTIPLE_MAX_DT ].m_float = 2.f;
 	general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int = 150;
 	general_settings[ KEY_FLICKSHOT_HEADSHOT_ONLY ].m_bool = false;
 	general_settings[ KEY_FLICKSHOT_MIN_DISTANCE ].m_float = 100.f;
@@ -455,13 +459,13 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		{
 			SetKeyValueBool( KEY_WALLBANG_HEADSHOT_ONLY, value )
 		}
-		else if( key == KEY_WALLBANG_REQUIRE_ANOTHER_KILL )
+		else if( key == KEY_WALLBANG_REQUIRE_TWO )
 		{
-			SetKeyValueBool( KEY_WALLBANG_REQUIRE_ANOTHER_KILL, value )
+			SetKeyValueBool( KEY_WALLBANG_REQUIRE_TWO, value )
 		}
-		else if( key == KEY_WALLBANG_ANOTHER_KILL_MAX_DT )
+		else if( key == KEY_WALLBANG_ANOTHER_WB_MAX_DT )
 		{
-			SetKeyValueFloat( KEY_WALLBANG_ANOTHER_KILL_MAX_DT, value )
+			SetKeyValueFloat( KEY_WALLBANG_ANOTHER_WB_MAX_DT, value )
 		}
 		else if( key == KEY_TICK_FRAGS_VS_BOTS )
 		{
@@ -602,6 +606,14 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		else if( key == KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD )
 		{
 			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, value )
+		}
+		else if( key == KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE )
+		{
+			SetKeyValueBool( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE, value )
+		}
+		else if( key == KEY_JUMPSHOT_MULTIPLE_MAX_DT )
+		{
+			SetKeyValueFloat( KEY_JUMPSHOT_MULTIPLE_MAX_DT, value )
 		}
 		else if( key == KEY_FLICKSHOT_MAX_DURATION )
 		{
@@ -1039,7 +1051,7 @@ bool SettingsManager::ShouldTickCollat( CSWeaponCategory category, Key tick_key,
 
 // =====================================================================================================================================================================
 
-bool SettingsManager::WallbangIsCloseToAnotherKill( CSWeaponID weapon, float time_to_closest_kill )
+bool SettingsManager::WallbangIsCloseToAnotherWallbang( CSWeaponID weapon, float time_to_closest_wb )
 {
 	bool bWeaponFound = m_weaponSettings.find( weapon ) != m_weaponSettings.end();
 
@@ -1047,43 +1059,100 @@ bool SettingsManager::WallbangIsCloseToAnotherKill( CSWeaponID weapon, float tim
 	WeaponSettingsField &category_settings = m_weaponSettings[ category ];
 	WeaponSettingsField &general_settings = GetGeneralSettings();
 
-	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_REQUIRE_ANOTHER_KILL ) != m_weaponSettings[ weapon ].end() )
+	// Check if we can skip the second kill check and just tick this as a singular wallbang
+	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_REQUIRE_TWO ) != m_weaponSettings[ weapon ].end() )
 	{
-		if( !m_weaponSettings[ weapon ][ KEY_WALLBANG_REQUIRE_ANOTHER_KILL ].m_bool )
+		if( !m_weaponSettings[ weapon ][ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
 			return true;
 	}
-	else if( category_settings.find( KEY_WALLBANG_REQUIRE_ANOTHER_KILL ) != category_settings.end() )
+	else if( category_settings.find( KEY_WALLBANG_REQUIRE_TWO ) != category_settings.end() )
 	{
-		if( !category_settings[ KEY_WALLBANG_REQUIRE_ANOTHER_KILL ].m_bool )
+		if( !category_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
 			return true;
 	}
 	else
 	{
-		if( !general_settings[ KEY_WALLBANG_REQUIRE_ANOTHER_KILL ].m_bool )
+		if( !general_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
 			return true;
 	}
+
+	// Another wallbang required - check if there is a suitable one
+
+	if( time_to_closest_wb < 0.f )
+		return false;
 
 	float max_deltatime;
 
-	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_ANOTHER_KILL_MAX_DT ) != m_weaponSettings[ weapon ].end() )
+	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) != m_weaponSettings[ weapon ].end() )
 	{
-		max_deltatime = m_weaponSettings[ weapon ][ KEY_WALLBANG_ANOTHER_KILL_MAX_DT ].m_float;
+		max_deltatime = m_weaponSettings[ weapon ][ KEY_WALLBANG_ANOTHER_WB_MAX_DT ].m_float;
 	}
-	else if( category_settings.find( KEY_WALLBANG_ANOTHER_KILL_MAX_DT ) != category_settings.end() )
+	else if( category_settings.find( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) != category_settings.end() )
 	{
-		max_deltatime = category_settings[ KEY_WALLBANG_ANOTHER_KILL_MAX_DT ].m_float;
+		max_deltatime = category_settings[ KEY_WALLBANG_ANOTHER_WB_MAX_DT ].m_float;
 	}
 	else
 	{
-		max_deltatime = general_settings[ KEY_WALLBANG_ANOTHER_KILL_MAX_DT ].m_float;
+		max_deltatime = general_settings[ KEY_WALLBANG_ANOTHER_WB_MAX_DT ].m_float;
 	}
 
-	return time_to_closest_kill <= max_deltatime;
+	return time_to_closest_wb <= max_deltatime;
 }
 
 // =====================================================================================================================================================================
 
-bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weapon, float distance, short headshots, float time_to_closest_kill )
+bool SettingsManager::JumpshotIsCloseToAnotherJumpshot( CSWeaponID weapon, float time_to_closest_js )
+{
+	// Is there another jumpshot at all?
+	if( time_to_closest_js < 0.f )
+		return false;
+
+	bool bWeaponFound = m_weaponSettings.find( weapon ) != m_weaponSettings.end();
+
+	CSWeaponCategory category = GetWeaponCategory( weapon );
+	WeaponSettingsField &category_settings = m_weaponSettings[ category ];
+	WeaponSettingsField &general_settings = GetGeneralSettings();
+
+	// Check if multiple jumpshots are supposed to be ticked
+	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) != m_weaponSettings[ weapon ].end() )
+	{
+		if( !m_weaponSettings[ weapon ][ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
+			return false;
+	}
+	else if( category_settings.find( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) != category_settings.end() )
+	{
+		if( !category_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
+			return false;
+	}
+	else
+	{
+		if( !general_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
+			return false;
+	}
+
+	// There is another jumpshot that might suffice - check the delta time
+
+	float max_deltatime;
+
+	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) != m_weaponSettings[ weapon ].end() )
+	{
+		max_deltatime = m_weaponSettings[ weapon ][ KEY_JUMPSHOT_MULTIPLE_MAX_DT ].m_float;
+	}
+	else if( category_settings.find( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) != category_settings.end() )
+	{
+		max_deltatime = category_settings[ KEY_JUMPSHOT_MULTIPLE_MAX_DT ].m_float;
+	}
+	else
+	{
+		max_deltatime = general_settings[ KEY_JUMPSHOT_MULTIPLE_MAX_DT ].m_float;
+	}
+
+	return time_to_closest_js <= max_deltatime;
+}
+
+// =====================================================================================================================================================================
+
+bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weapon, float distance, short headshots, const frag_delta_times_t &dtimes )
 {
 	CSWeaponCategory weaponCategory = GetWeaponCategory( weapon );
 
@@ -1140,16 +1209,19 @@ bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weap
 
 	if( type_flags & FL_KILL_WALLBANG )
 	{
-		if( WallbangIsCloseToAnotherKill( weapon, time_to_closest_kill ) )
+		if( ShouldTickFrag( KEY_TICK_WALLBANGS, KEY_WALLBANG_HEADSHOT_ONLY, bHeadshot )
+		&& WallbangIsCloseToAnotherWallbang( weapon, dtimes.time_to_closest_wallbang ) )
 		{
-			if( ShouldTickFrag( KEY_TICK_WALLBANGS, KEY_WALLBANG_HEADSHOT_ONLY, bHeadshot ) )
-				return true;
+			return true;
 		}
 	}
 
 	if( (type_flags & FL_KILL_JUMPSHOT) || (type_flags & FL_KILL_LADDERSHOT) )
 	{
 		if( ShouldTickFrag( KEY_TICK_JUMPSHOTS, KEY_JUMPSHOT_MIN_DISTANCE, KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD, KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
+			return true;
+
+		if( JumpshotIsCloseToAnotherJumpshot( weapon, dtimes.time_to_closest_jumpshot ) && ShouldTickFrag( KEY_TICK_JUMPSHOTS ) )
 			return true;
 	}
 

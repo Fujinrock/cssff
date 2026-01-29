@@ -201,7 +201,7 @@ bool DemoParser::Parse( void )
 float DemoParser::GetTimeBetweenTicks( int tick1, int tick2 ) const
 {
 	if( tick1 == tick2 )
-		return -1.f;
+		return 0.f;
 
 	int tickDelta = abs( tick1 - tick2 );
 
@@ -393,7 +393,7 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		// Print/write frags
 		if( m_Frags.empty() )
 		{
-			buffer = "No frags found with the used settings.";
+			buffer = "No frags found with the used settings";
 
 			if( bDumpToFile && file_output.is_open() )
 				file_output.write( buffer.c_str(), buffer.length() );

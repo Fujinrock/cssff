@@ -310,9 +310,6 @@ void DemoParser::DoPlayersPostCheck()
 		const int num_kills = player->GetNumKills();
 		float deltatime = GetTimeBetweenTicks( data.nKillTick, m_iCurrentTick );
 
-		if( deltatime < 0.0 )
-			deltatime = 0.0;
-
 		bool is_flickshot = false;
 		char midair_status = ON_GROUND;
 		bool bCheckedFlick = false;

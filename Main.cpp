@@ -158,7 +158,7 @@ bool WriteBatchOutput( bool bAborted )
 	if( g_BatchOutput.length() )
 		file_output.write( g_BatchOutput.c_str(), g_BatchOutput.length() );
 	else
-		file_output.write( "No frags found\n\n", 16 );
+		file_output.write( "No frags found with the used settings\n\n", 39 );
 
 	file_output.write( "Batch end", 9 );
 
