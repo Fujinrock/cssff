@@ -122,8 +122,8 @@ The default settings file should be called "cssff_settings.ini" and it should be
 |special_quadro_ignores_min_hs|boolean|Whether minimum headshots should be ignored if the quadro was a flickshot, jumpshot, noscope, wallbang or done while flashed|
 |special_penta_ignores_min_hs|boolean|Whether minimum headshots count should be ignored if the penta was a flickshot, jumpshot, noscope, wallbang or done while flashed|
 |wallbang_headshot_only|boolean|Whether only headshot wallbangs should be ticked|
-|wallbang_require_another_kill|boolean|Whether a second (non-wallbang) kill must accompany a wallbang for it to be ticked|
-|wallbang_another_kill_max_delta_time|decimal|Maximum time in seconds that may pass between the wallbang and the other kill to tick it|
+|wallbang_require_two|boolean|Whether two wallbangs in a row are required to tick them|
+|wallbang_another_wallbang_max_delta_time|decimal|Maximum time in seconds that may pass between two wallbangs for them to be considered consecutive|
 |flickshot_headshot_only|boolean|Whether only headshot flicks should be ticked|
 |flickshot_min_distance|decimal|Victim's minimum distance from the fragger in order to tick a flickshot|
 |flickshot_max_duration|integer|Maximum flick duration in milliseconds (max 300)|
@@ -132,6 +132,8 @@ The default settings file should be called "cssff_settings.ini" and it should be
 |jumpshot_min_distance|decimal|Victim's minimum distance from the fragger in order to tick a jumpshot|
 |jumpshot_min_distance_hs_modifier|decimal|Jumpshot minimum distance modifier used for headshots (values below 1 decrease the distance while values above 1 increase it)|
 |jumpshot_min_distance_wb_modifier|decimal|Jumpshot minimum distance modifier used for wallbangs (only in ClientMod demos)|
+|jumpshot_always_tick_multiple|boolean|Whether to always tick multiple jumpshots in a row, even if they are not good enough to be ticked on their own|
+|jumpshot_multiple_max_delta_time|decimal|Maximum time in seconds that may pass between two jumpshots for them to be considered consecutive|
 |noscope_min_distance|decimal|Victim's minimum distance from the fragger in order to tick a noscope|
 |noscope_min_distance_hs_modifier|decimal|Noscope minimum distance modifier used for headshots|
 |noscope_min_distance_wb_modifier|decimal|Noscope minimum distance modifier used for wallbangs (only in ClientMod demos)|
