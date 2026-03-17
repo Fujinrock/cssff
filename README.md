@@ -10,7 +10,7 @@ cssff is capable of detecting many different types of frags:
 - Flickshots
 - Noscopes
 - Wallbangs (only in ClientMod demos)
-- Frags that the POV recorder spectated (with the exception of mid-air frags)
+- Frags that the POV recorder spectated (with the exception of jumpshots)
 
 Other features include:
 - Support for Source TV, POV and client-recorded STV demos
@@ -98,9 +98,9 @@ The default settings file should be called "cssff_settings.ini" and it should be
 |5k_max_time|decimal|Maximum time in seconds that may pass between first and last kill in a 5k to tick it (negative number means unlimited time)|
 |4k_max_time|decimal|Maximum time in seconds that may pass between first and last kill in a 4k to tick it|
 |3k_max_time|decimal|Maximum time in seconds that may pass between first and last kill in a 3k to tick it|
-|tick_slow_stationary_5ks|boolean|Whether a long 5k in one spot should be ticked regardless of time|
-|tick_slow_stationary_4ks|boolean|Whether a long 4k in one spot should be ticked regardless of time|
-|tick_slow_stationary_3ks|boolean|Whether a long 3k in one spot should be ticked regardless of time|
+|tick_slow_stationary_5ks|boolean|Whether a slow 5k in one spot should be ticked regardless of time|
+|tick_slow_stationary_4ks|boolean|Whether a slow 4k in one spot should be ticked regardless of time|
+|tick_slow_stationary_3ks|boolean|Whether a slow 3k in one spot should be ticked regardless of time|
 |slow_5k_max_range|decimal|Fragger's maximum distance from the first kill for the 5k to be considered stationary|
 |slow_4k_max_range|decimal|Fragger's maximum distance from the first kill for the 4k to be considered stationary|
 |slow_3k_max_range|decimal|Fragger's maximum distance from the first kill for the 3k to be considered stationary|
@@ -159,6 +159,6 @@ Each found frag will have the following information:
 - A description of the frag
 - Demo name and type (either in the program window or in the output file)
 
-Frags that were ticked as 3k, 4k or 5k will always include the time that passed between the first and last kill. However, the total amount of enemies killed during the round is always written at the beginning of the description regardless of if those kills matter for the frag that was ticked (unless the kill count is the same as the ticked frag implies). This can lead to descriptions such as "4k including 3k (3hs) deagle in 1.08 seconds", where the time only applies to the 3k, or "4k with AK47 mid-air headshot", where the time is not included, because only the mid-air kill was ticked as a frag (and the frag's tick will only point to that mid-air kill, not the beginning of the 4k). This behavior might be confusing at first, but it is intentional, because it can be useful to know about other kills done during the round.
+Frags that were ticked as 3k, 4k or 5k will always include the time that passed between the first and last kill. However, the total amount of enemies killed during the round is always written at the beginning of the description regardless of if those kills matter for the frag that was ticked (unless the kill count is the same as the ticked frag implies). This can lead to descriptions such as "4k including 3k (3hs) deagle in 1.08 seconds", where the time only applies to the 3k, or "4k with AK47 jump headshot", where the time is not included, because only the jumpshot was ticked as a frag (and the frag's tick will only point to that jumpshot, not the beginning of the 4k). This behavior might be confusing at first, but it is intentional, because it can be useful to know about other kills done during the round.
 
 When dumping to file, a standardized format is not used (no json etc.). Instead, a more human-readable format is used.
