@@ -847,7 +847,7 @@ void Frag::AddFragDescriptor( uint32 tick, unsigned short type_flags, short team
 			// Only increase count if the previous instance was done with the same weapon OR this is in a multikill frag,
 			// because weapons don't matter in those. Don't combine HE doubles with doubles done with other weapons, though
 			if( (in_multikill_frag && (it->weapon == WEAPON_HEGRENADE && weapon == WEAPON_HEGRENADE || it->weapon != WEAPON_HEGRENADE && weapon != WEAPON_HEGRENADE))
-				|| it->weapon == weapon )
+			|| it->weapon == weapon )
 			{
 				++it->count;
 

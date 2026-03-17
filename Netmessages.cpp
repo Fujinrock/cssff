@@ -477,11 +477,8 @@ void DemoParser::HandleSVCGetCvarValue( bf_read &reader )
 
 void DemoParser::HandleDemoPacket( bf_read &reader )
 {
-	democmdinfo_t info;
-	reader.ReadBytes( &info, sizeof( democmdinfo_t ) );
-
-	int nSeqNrIn = reader.ReadLong();
-	int nSeqNrOut = reader.ReadLong();
+	// Skip reading unneeded information at the beginning of the packet (demo cmd info + nSeqNrIn & nSeqNrOut)
+	reader.SeekRelative( BYTES2BITS((sizeof(democmdinfo_t) + 2 * sizeof(long))) );
 
 	int datasize = reader.ReadLong(); // In bytes
 

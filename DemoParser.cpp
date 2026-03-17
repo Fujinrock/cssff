@@ -48,6 +48,7 @@ DemoParser::DemoParser( DemoFile *pDemo )
 	memset( &m_StringTables, 0, sizeof( m_StringTables ) );
 
 	// Only one parser should exist at any given time, so make this the global parser
+	assert( !gpParser );
 	gpParser = this;
 }
 
