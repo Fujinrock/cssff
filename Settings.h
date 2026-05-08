@@ -29,7 +29,7 @@ public:
 	void DisableBatchProcessing( void );
 
 	bool DumpToFileEnabled( void );
-	bool WriteOutputToDemoDirectory( void );
+	bool ShouldWriteOutputToDemoDirectory( void );
 
 	bool ShouldTickFragsVsBots( void );
 	bool ShouldTickFragsByBots( void );

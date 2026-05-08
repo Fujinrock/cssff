@@ -1257,7 +1257,7 @@ bool SettingsManager::DumpToFileEnabled( void )
 
 // =====================================================================================================================================================================
 
-bool SettingsManager::WriteOutputToDemoDirectory( void )
+bool SettingsManager::ShouldWriteOutputToDemoDirectory( void )
 {
 	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_WRITE_FILE_TO_DEMO_DIR ].m_bool;
 }

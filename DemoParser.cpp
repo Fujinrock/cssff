@@ -327,13 +327,15 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		std::string buffer;
 		const bool bDumpToFile = Settings()->DumpToFileEnabled() && (!g_WarningDemos.empty() || !g_FailedDemos.empty() || !m_Frags.empty());
 
+		bool bShouldWriteToDemoDir = bDumpToFile && Settings()->ShouldWriteOutputToDemoDirectory() && g_BatchDirectory.find( "AppData\\Local\\Temp" ) == std::string::npos;
+
 		if( bDumpToFile )
 		{
 			filename = m_pDemo->GetFileName();
 			RemoveFileExtension( filename );
 			filename += ".txt";
 
-			if( Settings()->WriteOutputToDemoDirectory() )
+			if( bShouldWriteToDemoDir )
 			{
 				file_output.open( g_BatchDirectory + filename, std::ios::binary );
 			}
@@ -420,7 +422,7 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		{
 			if( file_output.is_open() )
 			{
-				printf( "Output has been written to file %s in %s folder\n\n", filename.c_str(), Settings()->WriteOutputToDemoDirectory() ? "demo's" : "program" );
+				printf( "Output has been written to file %s in %s folder\n\n", filename.c_str(), bShouldWriteToDemoDir ? "demo's" : "program" );
 
 				file_output.close();
 			}

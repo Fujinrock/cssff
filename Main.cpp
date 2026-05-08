@@ -88,8 +88,10 @@ bool WriteBatchOutput( bool bAborted )
 
 	std::ofstream file_output;
 
+	bool bShouldWriteToDemoDir = Settings()->ShouldWriteOutputToDemoDirectory() && g_BatchDirectory.find( "AppData\\Local\\Temp" ) == std::string::npos;
+
 	// Where should the file be written to?
-	if( Settings()->WriteOutputToDemoDirectory() )
+	if( bShouldWriteToDemoDir )
 	{
 		// Open in the batch directory
 		file_output.open( g_BatchDirectory + szOutputFile, std::ios::binary );
@@ -167,7 +169,7 @@ bool WriteBatchOutput( bool bAborted )
 
 	file_output.close();
 
-	printf( "Results have been written to file %s in %s folder\n\n", szOutputFile, Settings()->WriteOutputToDemoDirectory()? "processed" : "program" );
+	printf( "Results have been written to file %s in %s folder\n\n", szOutputFile, bShouldWriteToDemoDir? "processed" : "program" );
 
 	return true;
 }
