@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <map>
+#include <unordered_map>
 #include <string>
 
 enum MultiKillFragType;
@@ -63,11 +63,11 @@ private:
 		bool m_bool;
 	};
 
-	typedef std::map< std::string, setting_value > WeaponSettingsField;
+	typedef std::unordered_map< std::string, setting_value > WeaponSettingsField;
 
 	// A hash map of the settings per weapon or weapon category
 	// General settings are in CATEGORY_GENERAL (CATEGORY_NONE)
-	std::map< SettingsCategory, WeaponSettingsField > m_weaponSettings;
+	std::unordered_map< SettingsCategory, WeaponSettingsField > m_weaponSettings;
 
 	WeaponSettingsField &GetGeneralSettings( void );
 

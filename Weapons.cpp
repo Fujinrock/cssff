@@ -1,6 +1,6 @@
-#include "Weapons.h"
+﻿#include "Weapons.h"
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <assert.h>
 
 // =====================================================================================================================================================================
@@ -81,8 +81,8 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 
 	// This function is a bit hacky in that it relies on the fact that num_weapons == number of kills,
 	// because duplicate weapons are not removed before calling this
-	std::map< CSWeaponID, int > weapons;
-	std::map< CSWeaponCategory, int > categories;
+	std::unordered_map< CSWeaponID, int > weapons;
+	std::unordered_map< CSWeaponCategory, int > categories;
 
 	for( int i = 0; i < num_weapons; ++i )
 	{
