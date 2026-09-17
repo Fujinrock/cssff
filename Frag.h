@@ -110,6 +110,7 @@ public:
 	Frag( short total_kills, byte team, bool spectated );
 
 	void SetPlayername( const char *playername );
+	const char *GetPlayername( void ) const;
 
 	MultiKillFragType GetMultiKillFragType( void ) const;
 
@@ -123,16 +124,19 @@ public:
 
 	void GetStringRepresentation( char *buffer, size_t buffer_size ) const;
 
+	int GetStartTick( void ) const;
+	int GetEndTick( void ) const;
+
 private:
 	// Get the amount of enemy kills that the descriptors in this frag imply
 	int GetImpliedKillCount( void ) const;
 
+	// Get a nice rounded tick for string
+	int GetRoundedTick( void ) const;
+
 	enum { TEAM_T = 2, TEAM_CT = 3 };
 
 	const char *GetTeamString( void ) const;
-
-	// Get a nice rounded tick for string
-	int GetRoundedTick( void ) const;
 
 	char m_szPlayername[ MAX_PLAYER_NAME_LENGTH ];			///< Name is copied in case the player leaves before the demo ends
 	multi_kill_frag_descriptor_t m_multiKillDescriptor;		///< The 5/4/3k descriptor of this frag, if any

@@ -49,6 +49,11 @@ private:
 
 	FragVector m_Frags;								///< Holds all the frags found on the demo being parsed
 
+
+	// ===== VDMs ==================================================================================================
+	void WriteVDM( void ) const;
+
+
 	// ===== Net messages ==========================================================================================
 	void HandleDemoPacket( bf_read &reader );
 	void HandleNETDisconnect( bf_read &reader );

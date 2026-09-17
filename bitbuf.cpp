@@ -9,6 +9,7 @@
 #include "bitbuf.h"
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 #include "common.h"
 
 #define	COORD_INTEGER_BITS			14
@@ -149,7 +150,7 @@ bool bf_read::ReadBits(void *pOutData, int nBits)
 	while(nBitsLeft >= 32)
 	{
 		*((unsigned long*)pOut) = ReadUBitLong(32);
-		pOut += sizeof(unsigned long);
+		pOut += sizeof(uint32_t);
 		nBitsLeft -= 32;
 	}
 
@@ -374,27 +375,27 @@ void bf_read::ReadBitAngles( QAngle& fa )
 
 int bf_read::ReadChar()
 {
-	return ReadSBitLong(sizeof(char) << 3);
+	return ReadSBitLong(sizeof(int8_t) << 3);
 }
 
 int bf_read::ReadByte()
 {
-	return ReadUBitLong(sizeof(unsigned char) << 3);
+	return ReadUBitLong(sizeof(uint8_t) << 3);
 }
 
 int bf_read::ReadShort()
 {
-	return ReadSBitLong(sizeof(short) << 3);
+	return ReadSBitLong(sizeof(int16_t) << 3);
 }
 
 int bf_read::ReadWord()
 {
-	return ReadUBitLong(sizeof(unsigned short) << 3);
+	return ReadUBitLong(sizeof(uint16_t) << 3);
 }
 
 long bf_read::ReadLong()
 {
-	return ReadSBitLong(sizeof(long) << 3);
+	return ReadSBitLong(sizeof(int32_t) << 3);
 }
 
 float bf_read::ReadFloat()

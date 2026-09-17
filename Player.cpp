@@ -320,7 +320,6 @@ void DemoParser::DoPlayersPostCheck()
 		CSWeaponCategory category = CATEGORY_NONE;
 #endif
 
-		// TODO: what if the player dies before the check is complete?
 		for( int k = num_kills-1; k >= 0; --k )
 		{
 			kill_info_t &kill = player->GetKill( k );

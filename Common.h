@@ -5,8 +5,9 @@
 #endif
 
 #include <string>
+#include <cstdint>
 
-#define	CSSFF_NAME					"CSSFF v2.1.18"
+#define	CSSFF_NAME					"CSSFF v2.2.0"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_HEADER_ID_GOLDSRC		"HLDEMO"
@@ -41,11 +42,11 @@
 // For ofstream objects
 #define WRITE_UTF8_BOM( file )		file.write( "\xEF\xBB\xBF", 3 )
 
-typedef unsigned char				byte;
-typedef __int32			 			int32;
-typedef unsigned __int32			uint32;
-typedef __int64						int64;
-typedef unsigned long				CRC32_t;
+typedef uint8_t						byte;
+typedef int32_t			 			int32;
+typedef uint32_t					uint32;
+typedef int64_t						int64;
+typedef uint32_t					CRC32_t;
 
 enum ParsingResult;
 struct ParsingError_t;
@@ -57,6 +58,8 @@ void RemoveFileExtension( std::string &filename );
 void RemoveFileNameFolders( std::string &filepath );
 bool FileHasExtension( const std::string &filename, const std::string &extension, bool allowPartial = false );
 bool IsValidDirectory( const char *szPath );
+bool IsValidDirectoryCharacter( char c );
+bool StrHasSpaces( const char *str );
 
 // Utility from the current demo parser that other classes need as well
 float GetTimeBetweenTicks( int, int );

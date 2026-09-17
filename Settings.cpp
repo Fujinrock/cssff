@@ -20,6 +20,9 @@ extern std::string g_BatchDirectory;
 #define KEY_DUMP_TO_FILE						"dump_to_file"
 #define KEY_WRITE_FILE_TO_DEMO_DIR				"write_output_to_demo_directory"
 #define KEY_ENABLE_BATCH_PROCESSING				"enable_batch_processing"
+#define KEY_CREATE_VDM							"create_vdm_file"
+#define KEY_VDM_WRITE_CFG						"vdm_write_cfg"
+#define KEY_VDM_DIR								"vdm_file_directory"
 #define KEY_TICK_5KS							"tick_5ks"
 #define KEY_TICK_4KS							"tick_4ks"
 #define KEY_TICK_3KS							"tick_3ks"
@@ -96,29 +99,45 @@ extern std::string g_BatchDirectory;
 	printf("Warning: key \"%s\" has invalid value \"%s\" (expected %s)\n", key, value.c_str(), #type)
 
 // Use these macros in LoadSettings
-#define SetKeyValueBool( key, value )\
-	int __nValue = -1;\
-	if( SettingEnabled( value ) )\
-		__nValue = 1;\
-	else if( SettingDisabled( value ) )\
-		__nValue = 0;\
-	if( __nValue != -1 ){\
-		for(size_t i=0;i<current_categories.size();++i)\
-			m_weaponSettings[ current_categories[i] ][ key ].m_bool = __nValue == 1;\
-	}\
-	else { PrintInvalidValueWarning(key, value, boolean); }
+#define SetKeyValueBool( key )\
+	do{\
+		int __nValue = -1;\
+		if( SettingEnabled( value ) )\
+			__nValue = 1;\
+		else if( SettingDisabled( value ) )\
+			__nValue = 0;\
+		if( __nValue != -1 ){\
+			for(size_t i=0;i<current_categories.size();++i)\
+				m_weaponSettings[ current_categories[i] ][ key ].m_bool = __nValue == 1;\
+		}\
+		else { PrintInvalidValueWarning(key, value, boolean); }\
+	}while( 0 )
 
-#define SetKeyValueFloat( key, value )\
-	try { float __fValue = stof( value );\
+#define SetKeyValueFloat( key )\
+	do{\
+		try { float __fValue = stof( value );\
 			for(size_t i=0;i<current_categories.size();++i)\
 				m_weaponSettings[ current_categories[i] ][ key ].m_float = __fValue; }\
-	catch( ... ) { PrintInvalidValueWarning(key, value, decimal); }
+		catch( ... ) { PrintInvalidValueWarning(key, value, decimal); }\
+	}while( 0 )
 
-#define SetKeyValueInt( key, value )\
-	try { int __nValue = stoi( value );\
+#define SetKeyValueInt( key )\
+	do{\
+		try { int __nValue = stoi( value );\
 			for(size_t i=0;i<current_categories.size();++i)\
 				m_weaponSettings[ current_categories[i] ][ key ].m_int = __nValue; }\
-	catch( ... ) { PrintInvalidValueWarning(key, value, integer); }
+		catch( ... ) { PrintInvalidValueWarning(key, value, integer); }\
+	}while( 0 )
+
+#define SetKeyValueString( key )\
+	do{\
+		char *pV = new char[ value.length()+1 ];\
+		strncpy_s( pV, value.length()+1, value.c_str(), value.length() );\
+		pV[ value.length() ] = '\000';\
+		m_allocatedStrings.push_back( pV );\
+		for(size_t i=0;i<current_categories.size();++i)\
+			m_weaponSettings[ current_categories[i] ][ key ].m_string = pV;\
+	}while( 0 )
 
 // Macro for a function that returns the value for a settings field for a specific weapon
 // Checks for weapon settings, weapon category settings and finally general settings
@@ -134,6 +153,18 @@ extern std::string g_BatchDirectory;
 		return category_settings[ key ].m_##valuetype;\
 	else\
 		return m_weaponSettings[ CATEGORY_GENERAL ][ key ].m_##valuetype
+
+// =====================================================================================================================================================================
+
+SettingsManager::~SettingsManager( void )
+{
+	for( auto s : m_allocatedStrings )
+	{
+		delete[] s;
+	}
+
+	m_allocatedStrings.clear();
+}
 
 // =====================================================================================================================================================================
 
@@ -169,6 +200,9 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_DUMP_TO_FILE ].m_bool = false;
 	general_settings[ KEY_WRITE_FILE_TO_DEMO_DIR ].m_bool = false;
 	general_settings[ KEY_ENABLE_BATCH_PROCESSING ].m_bool = false;
+	general_settings[ KEY_CREATE_VDM ].m_bool = false;
+	general_settings[ KEY_VDM_WRITE_CFG ].m_bool = true;
+	general_settings[ KEY_VDM_DIR ].m_string = "";
 	general_settings[ KEY_TICK_5KS ].m_bool = true;
 	general_settings[ KEY_TICK_4KS ].m_bool = true;
 	general_settings[ KEY_TICK_3KS ].m_bool = true;
@@ -289,12 +323,12 @@ bool GetSettingsFileFromDirectory( const std::string &sDirectory, std::string &o
 // =====================================================================================================================================================================
 
 // This is where the settings for all categories are read from the settings file
-void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSupplied )
+bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSupplied )
 {
 	using namespace std;
 
 	if( m_bSettingsLoaded )
-		return;
+		return true;
 
 	string sConfigPath;
 
@@ -325,8 +359,8 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		if( !file.is_open() )
 		{
 			RemoveFileNameFolders( sConfigPath );
-			printf( "Warning: Could not open settings file \"%s\" - using built-in default values!\n", sConfigPath.c_str() );
-			return;
+			printf( "Error: Could not open settings file \"%s\" - process has been aborted!\n", sConfigPath.c_str() );
+			return false;
 		}
 	}
 
@@ -341,6 +375,9 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 	std::vector< SettingsCategory > current_categories;
 	current_categories.push_back( GetCategoryByName( CAT_NAME_GENERAL ) );
 	bool last_line_was_category = false;
+
+	bool vdm_dir_is_valid = true;
+	char vdm_dir_invalid_char = ' ';
 
 	string line;
 	while( getline( file, line ) )
@@ -391,245 +428,284 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		TrimString( key );
 		TrimString( value );
 
+		// Remove quotation marks from value
+		if( !value.empty() && value.front() == '\"' && value.back() == '\"' )
+			value = value.substr( 1, value.length() - 2 );
+
 #ifdef _DEBUG_PRINT_DETAILS
 		printf( "[Settings] key: %s | value: %s\n", key.c_str(), value.c_str() );
 #endif
 
-		if( key == KEY_DUMP_TO_FILE )
+#define KeyIs( targetkey ) !_stricmp( key.c_str(), targetkey )
+		
+		if( KeyIs( KEY_DUMP_TO_FILE ) )
 		{
-			SetKeyValueBool( KEY_DUMP_TO_FILE, value )
+			SetKeyValueBool( KEY_DUMP_TO_FILE );
 		}
-		else if( key == KEY_WRITE_FILE_TO_DEMO_DIR )
+		else if( KeyIs( KEY_WRITE_FILE_TO_DEMO_DIR ) )
 		{
-			SetKeyValueBool( KEY_WRITE_FILE_TO_DEMO_DIR, value )
+			SetKeyValueBool( KEY_WRITE_FILE_TO_DEMO_DIR );
 		}
-		else if( key == KEY_ENABLE_BATCH_PROCESSING )
+		else if( KeyIs( KEY_ENABLE_BATCH_PROCESSING ) )
 		{
-			SetKeyValueBool( KEY_ENABLE_BATCH_PROCESSING, value )
+			SetKeyValueBool( KEY_ENABLE_BATCH_PROCESSING );
 		}
-		else if( key == KEY_TICK_5KS )
+		else if( KeyIs( KEY_CREATE_VDM ) )
 		{
-			SetKeyValueBool( KEY_TICK_5KS, value )
+			SetKeyValueBool( KEY_CREATE_VDM );
 		}
-		else if( key == KEY_TICK_4KS )
+		else if( KeyIs( KEY_VDM_WRITE_CFG ) )
 		{
-			SetKeyValueBool( KEY_TICK_4KS, value )
+			SetKeyValueBool( KEY_VDM_WRITE_CFG );
 		}
-		else if( key == KEY_TICK_3KS )
+		else if( KeyIs( KEY_VDM_DIR ) )
 		{
-			SetKeyValueBool( KEY_TICK_3KS, value )
+			if( value.empty() )
+				continue;
+
+			for( char c : value )
+			{
+				if( std::isspace( c ) || !IsValidDirectoryCharacter( c ) )
+				{
+					vdm_dir_invalid_char = c;
+					vdm_dir_is_valid = false;
+					break;
+				}
+			}
+
+			if( !vdm_dir_is_valid )
+				continue;
+
+			while( value.back() == '\\' || value.back() == '/' )
+				value.pop_back();
+			while( value.front() == '\\' || value.front() == '/' )
+				value.erase( 0, 1 );
+
+			SetKeyValueString( KEY_VDM_DIR );
 		}
-		else if( key == KEY_TICK_DOUBLES )
+		else if( KeyIs( KEY_TICK_5KS ) )
 		{
-			SetKeyValueBool( KEY_TICK_DOUBLES, value )
+			SetKeyValueBool( KEY_TICK_5KS );
 		}
-		else if( key == KEY_TICK_TRIPLES )
+		else if( KeyIs( KEY_TICK_4KS ) )
 		{
-			SetKeyValueBool( KEY_TICK_TRIPLES, value )
+			SetKeyValueBool( KEY_TICK_4KS );
 		}
-		else if( key == KEY_TICK_QUADROS )
+		else if( KeyIs( KEY_TICK_3KS ) )
 		{
-			SetKeyValueBool( KEY_TICK_QUADROS, value )
+			SetKeyValueBool( KEY_TICK_3KS );
 		}
-		else if( key == KEY_TICK_PENTAS )
+		else if( KeyIs( KEY_TICK_DOUBLES ) )
 		{
-			SetKeyValueBool( KEY_TICK_PENTAS, value )
+			SetKeyValueBool( KEY_TICK_DOUBLES );
 		}
-		else if( key == KEY_TICK_FLASH_SMOKE_KILLS )
+		else if( KeyIs( KEY_TICK_TRIPLES ) )
 		{
-			SetKeyValueBool( KEY_TICK_FLASH_SMOKE_KILLS, value )
+			SetKeyValueBool( KEY_TICK_TRIPLES );
 		}
-		else if( key == KEY_TICK_JUMPSHOTS )
+		else if( KeyIs( KEY_TICK_QUADROS ) )
 		{
-			SetKeyValueBool( KEY_TICK_JUMPSHOTS, value )
+			SetKeyValueBool( KEY_TICK_QUADROS );
 		}
-		else if( key == KEY_TICK_NOSCOPES )
+		else if( KeyIs( KEY_TICK_PENTAS ) )
 		{
-			SetKeyValueBool( KEY_TICK_NOSCOPES, value )
+			SetKeyValueBool( KEY_TICK_PENTAS );
 		}
-		else if( key == KEY_TICK_FLICKSHOTS )
+		else if( KeyIs( KEY_TICK_FLASH_SMOKE_KILLS ) )
 		{
-			SetKeyValueBool( KEY_TICK_FLICKSHOTS, value )
+			SetKeyValueBool( KEY_TICK_FLASH_SMOKE_KILLS );
 		}
-		else if( key == KEY_TICK_WALLBANGS )
+		else if( KeyIs( KEY_TICK_JUMPSHOTS ) )
 		{
-			SetKeyValueBool( KEY_TICK_WALLBANGS, value )
+			SetKeyValueBool( KEY_TICK_JUMPSHOTS );
 		}
-		else if( key == KEY_WALLBANG_HEADSHOT_ONLY )
+		else if( KeyIs( KEY_TICK_NOSCOPES ) )
 		{
-			SetKeyValueBool( KEY_WALLBANG_HEADSHOT_ONLY, value )
+			SetKeyValueBool( KEY_TICK_NOSCOPES );
 		}
-		else if( key == KEY_WALLBANG_REQUIRE_TWO )
+		else if( KeyIs( KEY_TICK_FLICKSHOTS ) )
 		{
-			SetKeyValueBool( KEY_WALLBANG_REQUIRE_TWO, value )
+			SetKeyValueBool( KEY_TICK_FLICKSHOTS );
 		}
-		else if( key == KEY_WALLBANG_ANOTHER_WB_MAX_DT )
+		else if( KeyIs( KEY_TICK_WALLBANGS ) )
 		{
-			SetKeyValueFloat( KEY_WALLBANG_ANOTHER_WB_MAX_DT, value )
+			SetKeyValueBool( KEY_TICK_WALLBANGS );
 		}
-		else if( key == KEY_TICK_FRAGS_VS_BOTS )
+		else if( KeyIs( KEY_WALLBANG_HEADSHOT_ONLY ) )
 		{
-			SetKeyValueBool( KEY_TICK_FRAGS_VS_BOTS, value )
+			SetKeyValueBool( KEY_WALLBANG_HEADSHOT_ONLY );
 		}
-		else if( key == KEY_TICK_FRAGS_BY_BOTS )
+		else if( KeyIs( KEY_WALLBANG_REQUIRE_TWO ) )
 		{
-			SetKeyValueBool( KEY_TICK_FRAGS_BY_BOTS, value )
+			SetKeyValueBool( KEY_WALLBANG_REQUIRE_TWO );
 		}
-		else if( key == KEY_5K_MAX_TIME )
+		else if( KeyIs( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) )
 		{
-			SetKeyValueFloat( KEY_5K_MAX_TIME, value )
+			SetKeyValueFloat( KEY_WALLBANG_ANOTHER_WB_MAX_DT );
 		}
-		else if( key == KEY_4K_MAX_TIME )
+		else if( KeyIs( KEY_TICK_FRAGS_VS_BOTS ) )
 		{
-			SetKeyValueFloat( KEY_4K_MAX_TIME, value )
+			SetKeyValueBool( KEY_TICK_FRAGS_VS_BOTS );
 		}
-		else if( key == KEY_3K_MAX_TIME )
+		else if( KeyIs( KEY_TICK_FRAGS_BY_BOTS ) )
 		{
-			SetKeyValueFloat( KEY_3K_MAX_TIME, value )
+			SetKeyValueBool( KEY_TICK_FRAGS_BY_BOTS );
 		}
-		else if( key == KEY_TICK_SLOW_STATIONARY_5KS )
+		else if( KeyIs( KEY_5K_MAX_TIME ) )
 		{
-			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_5KS, value )
+			SetKeyValueFloat( KEY_5K_MAX_TIME );
 		}
-		else if( key == KEY_TICK_SLOW_STATIONARY_4KS )
+		else if( KeyIs( KEY_4K_MAX_TIME ) )
 		{
-			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_4KS, value )
+			SetKeyValueFloat( KEY_4K_MAX_TIME );
 		}
-		else if( key == KEY_TICK_SLOW_STATIONARY_3KS )
+		else if( KeyIs( KEY_3K_MAX_TIME ) )
 		{
-			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_3KS, value )
+			SetKeyValueFloat( KEY_3K_MAX_TIME );
 		}
-		else if( key == KEY_SLOW_5K_MAX_RANGE )
+		else if( KeyIs( KEY_TICK_SLOW_STATIONARY_5KS ) )
 		{
-			SetKeyValueFloat( KEY_SLOW_5K_MAX_RANGE, value )
+			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_5KS );
 		}
-		else if( key == KEY_SLOW_4K_MAX_RANGE )
+		else if( KeyIs( KEY_TICK_SLOW_STATIONARY_4KS ) )
 		{
-			SetKeyValueFloat( KEY_SLOW_4K_MAX_RANGE, value )
+			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_4KS );
 		}
-		else if( key == KEY_SLOW_3K_MAX_RANGE )
+		else if( KeyIs( KEY_TICK_SLOW_STATIONARY_3KS ) )
 		{
-			SetKeyValueFloat( KEY_SLOW_3K_MAX_RANGE, value )
+			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_3KS );
 		}
-		else if( key == KEY_5K_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_SLOW_5K_MAX_RANGE ) )
 		{
-			SetKeyValueInt( KEY_5K_MIN_HEADSHOTS, value )
+			SetKeyValueFloat( KEY_SLOW_5K_MAX_RANGE );
 		}
-		else if( key == KEY_4K_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_SLOW_4K_MAX_RANGE ) )
 		{
-			SetKeyValueInt( KEY_4K_MIN_HEADSHOTS, value )
+			SetKeyValueFloat( KEY_SLOW_4K_MAX_RANGE );
 		}
-		else if( key == KEY_3K_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_SLOW_3K_MAX_RANGE ) )
 		{
-			SetKeyValueInt( KEY_3K_MIN_HEADSHOTS, value )
+			SetKeyValueFloat( KEY_SLOW_3K_MAX_RANGE );
 		}
-		else if( key == KEY_5K_MUST_INCLUDE_SP_KILL )
+		else if( KeyIs( KEY_5K_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueBool( KEY_5K_MUST_INCLUDE_SP_KILL, value )
+			SetKeyValueInt( KEY_5K_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_4K_MUST_INCLUDE_SP_KILL )
+		else if( KeyIs( KEY_4K_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueBool( KEY_4K_MUST_INCLUDE_SP_KILL, value )
+			SetKeyValueInt( KEY_4K_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_3K_MUST_INCLUDE_SP_KILL )
+		else if( KeyIs( KEY_3K_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueBool( KEY_3K_MUST_INCLUDE_SP_KILL, value )
+			SetKeyValueInt( KEY_3K_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_5K_SP_KILL_EXTRA_MAX_TIME )
+		else if( KeyIs( KEY_5K_MUST_INCLUDE_SP_KILL ) )
 		{
-			SetKeyValueFloat( KEY_5K_SP_KILL_EXTRA_MAX_TIME, value )
+			SetKeyValueBool( KEY_5K_MUST_INCLUDE_SP_KILL );
 		}
-		else if( key == KEY_4K_SP_KILL_EXTRA_MAX_TIME )
+		else if( KeyIs( KEY_4K_MUST_INCLUDE_SP_KILL ) )
 		{
-			SetKeyValueFloat( KEY_4K_SP_KILL_EXTRA_MAX_TIME, value )
+			SetKeyValueBool( KEY_4K_MUST_INCLUDE_SP_KILL );
 		}
-		else if( key == KEY_3K_SP_KILL_EXTRA_MAX_TIME )
+		else if( KeyIs( KEY_3K_MUST_INCLUDE_SP_KILL ) )
 		{
-			SetKeyValueFloat( KEY_3K_SP_KILL_EXTRA_MAX_TIME, value )
+			SetKeyValueBool( KEY_3K_MUST_INCLUDE_SP_KILL );
 		}
-		else if( key == KEY_DOUBLE_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_5K_SP_KILL_EXTRA_MAX_TIME ) )
 		{
-			SetKeyValueInt( KEY_DOUBLE_MIN_HEADSHOTS, value )
+			SetKeyValueFloat( KEY_5K_SP_KILL_EXTRA_MAX_TIME );
 		}
-		else if( key == KEY_TRIPLE_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_4K_SP_KILL_EXTRA_MAX_TIME ) )
 		{
-			SetKeyValueInt( KEY_TRIPLE_MIN_HEADSHOTS, value )
+			SetKeyValueFloat( KEY_4K_SP_KILL_EXTRA_MAX_TIME );
 		}
-		else if( key == KEY_QUADRO_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_3K_SP_KILL_EXTRA_MAX_TIME ) )
 		{
-			SetKeyValueInt( KEY_QUADRO_MIN_HEADSHOTS, value )
+			SetKeyValueFloat( KEY_3K_SP_KILL_EXTRA_MAX_TIME );
 		}
-		else if( key == KEY_PENTA_MIN_HEADSHOTS )
+		else if( KeyIs( KEY_DOUBLE_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueInt( KEY_PENTA_MIN_HEADSHOTS, value )
+			SetKeyValueInt( KEY_DOUBLE_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_SP_DOUBLE_IGNORES_MIN_HS )
+		else if( KeyIs( KEY_TRIPLE_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueBool( KEY_SP_DOUBLE_IGNORES_MIN_HS, value )
+			SetKeyValueInt( KEY_TRIPLE_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_SP_TRIPLE_IGNORES_MIN_HS )
+		else if( KeyIs( KEY_QUADRO_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueBool( KEY_SP_TRIPLE_IGNORES_MIN_HS, value )
+			SetKeyValueInt( KEY_QUADRO_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_SP_QUADRO_IGNORES_MIN_HS )
+		else if( KeyIs( KEY_PENTA_MIN_HEADSHOTS ) )
 		{
-			SetKeyValueBool( KEY_SP_QUADRO_IGNORES_MIN_HS, value )
+			SetKeyValueInt( KEY_PENTA_MIN_HEADSHOTS );
 		}
-		else if( key == KEY_SP_PENTA_IGNORES_MIN_HS )
+		else if( KeyIs( KEY_SP_DOUBLE_IGNORES_MIN_HS ) )
 		{
-			SetKeyValueBool( KEY_SP_PENTA_IGNORES_MIN_HS, value )
+			SetKeyValueBool( KEY_SP_DOUBLE_IGNORES_MIN_HS );
 		}
-		else if( key == KEY_NOSCOPE_MIN_DISTANCE )
+		else if( KeyIs( KEY_SP_TRIPLE_IGNORES_MIN_HS ) )
 		{
-			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE, value )
+			SetKeyValueBool( KEY_SP_TRIPLE_IGNORES_MIN_HS );
 		}
-		else if( key == KEY_NOSCOPE_MIN_DISTANCE_HS_MOD )
+		else if( KeyIs( KEY_SP_QUADRO_IGNORES_MIN_HS ) )
 		{
-			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_HS_MOD, value )
+			SetKeyValueBool( KEY_SP_QUADRO_IGNORES_MIN_HS );
 		}
-		else if( key == KEY_NOSCOPE_MIN_DISTANCE_WB_MOD )
+		else if( KeyIs( KEY_SP_PENTA_IGNORES_MIN_HS ) )
 		{
-			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD, value )
+			SetKeyValueBool( KEY_SP_PENTA_IGNORES_MIN_HS );
 		}
-		else if( key == KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME )
+		else if( KeyIs( KEY_NOSCOPE_MIN_DISTANCE ) )
 		{
-			SetKeyValueFloat( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME, value )
+			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE );
 		}
-		else if( key == KEY_JUMPSHOT_MIN_DISTANCE )
+		else if( KeyIs( KEY_NOSCOPE_MIN_DISTANCE_HS_MOD ) )
 		{
-			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE, value )
+			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_HS_MOD );
 		}
-		else if( key == KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD )
+		else if( KeyIs( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD ) )
 		{
-			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD, value )
+			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD );
 		}
-		else if( key == KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD )
+		else if( KeyIs( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME ) )
 		{
-			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME );
 		}
-		else if( key == KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE )
+		else if( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE ) )
 		{
-			SetKeyValueBool( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE );
 		}
-		else if( key == KEY_JUMPSHOT_MULTIPLE_MAX_DT )
+		else if( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD ) )
 		{
-			SetKeyValueFloat( KEY_JUMPSHOT_MULTIPLE_MAX_DT, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD );
 		}
-		else if( key == KEY_FLICKSHOT_MAX_DURATION )
+		else if( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD ) )
 		{
-			SetKeyValueInt( KEY_FLICKSHOT_MAX_DURATION, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD );
 		}
-		else if( key == KEY_FLICKSHOT_HEADSHOT_ONLY )
+		else if( KeyIs( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) )
 		{
-			SetKeyValueBool( KEY_FLICKSHOT_HEADSHOT_ONLY, value )
+			SetKeyValueBool( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE );
 		}
-		else if( key == KEY_FLICKSHOT_MIN_DISTANCE )
+		else if( KeyIs( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) )
 		{
-			SetKeyValueFloat( KEY_FLICKSHOT_MIN_DISTANCE, value )
+			SetKeyValueFloat( KEY_JUMPSHOT_MULTIPLE_MAX_DT );
 		}
-		else if( key == KEY_FLICKSHOT_MIN_ANGLE_MOD )
+		else if( KeyIs( KEY_FLICKSHOT_MAX_DURATION ) )
 		{
-			SetKeyValueFloat( KEY_FLICKSHOT_MIN_ANGLE_MOD, value )
+			SetKeyValueInt( KEY_FLICKSHOT_MAX_DURATION );
+		}
+		else if( KeyIs( KEY_FLICKSHOT_HEADSHOT_ONLY ) )
+		{
+			SetKeyValueBool( KEY_FLICKSHOT_HEADSHOT_ONLY );
+		}
+		else if( KeyIs( KEY_FLICKSHOT_MIN_DISTANCE ) )
+		{
+			SetKeyValueFloat( KEY_FLICKSHOT_MIN_DISTANCE );
+		}
+		else if( KeyIs( KEY_FLICKSHOT_MIN_ANGLE_MOD ) )
+		{
+			SetKeyValueFloat( KEY_FLICKSHOT_MIN_ANGLE_MOD );
 		}
 		else
 		{
@@ -637,7 +713,15 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		}
 	}
 
+#undef KeyIs
+
 	file.close();
+
+	if( !vdm_dir_is_valid && ShouldWriteVDM() )
+	{
+		printf( "Error: VDM directory contains a forbidden character \"%c\" - process has been aborted!\n", vdm_dir_invalid_char );
+		return false;
+	}
 
 	// Find longest flick duration
 	// and cap the maximum duration to avoid growing the view angle lists too much
@@ -661,6 +745,7 @@ void SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 	}
 
 	m_bSettingsLoaded = true;
+	return true;
 }
 
 // =====================================================================================================================================================================
@@ -1259,7 +1344,28 @@ bool SettingsManager::DumpToFileEnabled( void )
 
 bool SettingsManager::ShouldWriteOutputToDemoDirectory( void )
 {
-	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_WRITE_FILE_TO_DEMO_DIR ].m_bool;
+	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_WRITE_FILE_TO_DEMO_DIR ].m_bool && g_BatchDirectory.find( "AppData\\Local\\Temp" ) == std::string::npos;
+}
+
+// =====================================================================================================================================================================
+
+bool SettingsManager::ShouldWriteVDM( void )
+{
+	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_CREATE_VDM ].m_bool;
+}
+
+// =====================================================================================================================================================================
+
+bool SettingsManager::ShouldWriteVDMConfig( void )
+{
+	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_VDM_WRITE_CFG ].m_bool;
+}
+
+// =====================================================================================================================================================================
+
+const char *SettingsManager::GetVDMDirectory( void )
+{
+	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_VDM_DIR ].m_string;
 }
 
 // =====================================================================================================================================================================

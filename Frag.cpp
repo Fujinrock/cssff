@@ -700,6 +700,13 @@ void Frag::SetPlayername( const char *playername )
 
 // =====================================================================================================================================================================
 
+const char *Frag::GetPlayername( void ) const
+{
+	return m_szPlayername;
+}
+
+// =====================================================================================================================================================================
+
 MultiKillFragType Frag::GetMultiKillFragType( void ) const
 {
 	return m_multiKillDescriptor.frag_type;
@@ -1027,8 +1034,8 @@ const char *Frag::GetTeamString( void ) const
 int Frag::GetRoundedTick( void ) const
 {
 	const int seg_size = ((GetTickRate() * 5 + 25) / 50) * 50; // Round to nearest 50
-	int num_of_seg = m_nStartTick / seg_size;
-	int remainder = m_nStartTick % seg_size;
+	const int num_of_seg = m_nStartTick / seg_size;
+	const int remainder = m_nStartTick % seg_size;
 
 	int rounded_tick = num_of_seg * seg_size;
 
@@ -1059,6 +1066,24 @@ int Frag::GetRoundedTick( void ) const
 		rounded_tick = 0;
 
 	return rounded_tick;
+}
+
+// =====================================================================================================================================================================
+
+int Frag::GetStartTick( void ) const
+{
+	return m_nStartTick;
+}
+
+// =====================================================================================================================================================================
+
+int Frag::GetEndTick( void ) const
+{
+	if( m_multiKillDescriptor.IsValid() )
+		return m_multiKillDescriptor.end_tick;
+
+	// One-kill frag or collat, 1 tick only
+	return GetStartTick();
 }
 
 // =====================================================================================================================================================================

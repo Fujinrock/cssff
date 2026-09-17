@@ -48,7 +48,7 @@ void RemoveFileExtension( std::string &filename )
 
 void RemoveFileNameFolders( std::string &filepath )
 {
-	size_t slash = filepath.find_last_of( '\\' );
+	size_t slash = filepath.find_last_of( "/\\" );
 	if( slash != std::string::npos )
 		filepath.erase( 0, slash + 1 );
 }
@@ -71,6 +71,42 @@ bool IsValidDirectory( const char *szPath )
 	DWORD attributes = GetFileAttributesA( szPath );
 
 	return (attributes != INVALID_FILE_ATTRIBUTES) && (attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+bool IsValidDirectoryCharacter( char c )
+{
+	// Is it a control character?
+	if( c < 32 )
+		return false;
+
+	switch( c )
+	{
+		// This SHOULD include '\' and '/', but in this program's use case they're allowed
+		case ':':
+		case '*':
+		case '?':
+		case '\"':
+		case '<':
+		case '>':
+		case '|':
+			return false;
+	}
+
+	return true;
+}
+
+bool StrHasSpaces( const char *str )
+{
+	if( !str || !str[ 0 ] )
+		return false;
+
+	for( int i = 0; str[ i ]; ++i )
+	{
+		if( std::isspace( str[ i ] ) )
+			return true;
+	}
+
+	return false;
 }
 
 // The parser that is currently parsing a demo

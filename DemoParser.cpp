@@ -5,6 +5,7 @@
 #include <conio.h>
 #include <fstream>
 #include <format>
+#include <filesystem>
 
 DemoParser *gpParser = nullptr;
 
@@ -327,7 +328,8 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		std::string buffer;
 		const bool bDumpToFile = Settings()->DumpToFileEnabled() && (!g_WarningDemos.empty() || !g_FailedDemos.empty() || !m_Frags.empty());
 
-		bool bShouldWriteToDemoDir = bDumpToFile && Settings()->ShouldWriteOutputToDemoDirectory() && g_BatchDirectory.find( "AppData\\Local\\Temp" ) == std::string::npos;
+		const bool bShouldWriteToDemoDir = bDumpToFile && Settings()->ShouldWriteOutputToDemoDirectory();
+		bool bCantOverwriteFile = false;
 
 		if( bDumpToFile )
 		{
@@ -335,13 +337,32 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 			RemoveFileExtension( filename );
 			filename += ".txt";
 
-			if( bShouldWriteToDemoDir )
+			std::string filepath = (bShouldWriteToDemoDir ? g_BatchDirectory : g_ProgramDirectory) + filename;
+
+			if( std::filesystem::exists( filepath ) )
 			{
-				file_output.open( g_BatchDirectory + filename, std::ios::binary );
+				std::ifstream file( filepath, std::ios::binary );
+
+				if( file.is_open() )
+				{
+					std::string line;
+					std::getline( file, line );
+
+					if( line.find( "FOUND FRAGS:" ) != std::string::npos )
+						file_output.open( filepath, std::ios::binary );
+					else
+						bCantOverwriteFile = true;
+
+					file.close();
+				}
+				else
+				{
+					bCantOverwriteFile = true;
+				}
 			}
 			else
 			{
-				file_output.open( g_ProgramDirectory + filename, std::ios::binary );
+				file_output.open( filepath, std::ios::binary );
 			}
 
 			if( file_output.is_open() )
@@ -385,13 +406,13 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 			printf( "\n\n" );
 
 			if( bDumpToFile && file_output.is_open() )
-				file_output.write( "\n", 1 );
+				file_output << "\n";
 		}
 
 		printf( "========== FOUND FRAGS ==========\n\n" );
 
 		if( bDumpToFile && file_output.is_open() )
-			file_output.write( "FOUND FRAGS:\n\n", 14 );
+			file_output << "FOUND FRAGS:\n\n";
 
 		// Print/write frags
 		if( m_Frags.empty() )
@@ -422,14 +443,217 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		{
 			if( file_output.is_open() )
 			{
-				printf( "Output has been written to file %s in %s folder\n\n", filename.c_str(), bShouldWriteToDemoDir ? "demo's" : "program" );
+				printf( "Info has been written to file \"%s\" in %s folder\n\n", filename.c_str(), bShouldWriteToDemoDir ? "demo's" : "program" );
 
 				file_output.close();
 			}
 			else
 			{
-				printf( "Failed to write output to file\n\n" );
+				printf( "Failed to write info to file%s\n\n", bCantOverwriteFile ? " (cannot overwrite existing file)" : "" );
 			}
+		}
+	}
+
+	// Write VDM if need be
+	// This is written here regardless of if we're batch-processing or not
+	if( Settings()->ShouldWriteVDM() )
+	{
+		WriteVDM();
+	}
+}
+
+// ==================================================================================================================
+
+void DemoParser::WriteVDM( void ) const
+{
+	if( m_Frags.empty() )
+		return;
+
+	const std::string vdmSubDir = Settings()->GetVDMDirectory();
+
+	const bool bShouldWriteToDemoDir = Settings()->ShouldWriteOutputToDemoDirectory();
+
+	std::string writeToDir = bShouldWriteToDemoDir ? g_BatchDirectory : g_ProgramDirectory;
+
+	// Check whether we should create a folder for the VDM subdirectory
+	if( !vdmSubDir.empty() )
+	{
+		size_t pos = writeToDir.length() < 2 ? std::string::npos : writeToDir.find_last_of( "/\\", writeToDir.length() - 2 );
+
+		if( pos == std::string::npos || _stricmp( vdmSubDir.c_str(), (writeToDir.substr( pos + 1, (writeToDir.length() - 1) - (pos + 1) )).c_str() ) != 0 )
+		{
+			if( !std::filesystem::exists( writeToDir + vdmSubDir ) )
+			{
+				std::filesystem::create_directories( writeToDir + vdmSubDir );
+			}
+
+			writeToDir += (vdmSubDir + '\\');
+		}
+	}
+
+	std::string filename = m_pDemo->GetFileName();
+	RemoveFileExtension( filename );
+	const std::string filepath = writeToDir + filename + ".vdm";
+
+	// Check if we dare to overwrite an already existing file by this name
+	if( std::filesystem::exists( filepath ) )
+	{
+		std::ifstream vdm( filepath, std::ios::binary );
+
+		if( !vdm.is_open() )
+		{
+			printf( "%sFailed to check existing VDM file - writing aborted!\n", Settings()->BatchProcessingEnabled() ? " L " : "" );
+			return;
+		}
+
+		std::string line;
+		std::getline( vdm, line );
+		vdm.close();
+
+		if( line != "demoactions" )
+		{
+			printf( "%sCannot overwrite existing VDM file!\n", Settings()->BatchProcessingEnabled() ? " L " : "" );
+			return;
+		}
+	}
+
+	std::ofstream vdm_output( filepath, std::ios::binary );
+
+	if( !vdm_output.is_open() )
+	{
+		printf( "%sFailed to write VDM file!\n", Settings()->BatchProcessingEnabled() ? " L " : "" );
+		return;
+	}
+
+	vdm_output << "demoactions\n{\n";
+
+	// Action number can be the same for every action, which makes it easier to edit the file later on
+	const int actionNumber = 1;
+	const int specSetupTicks = 15;
+
+	// This will be used when chaining
+	vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
+		<< "\t\tfactory \"PlayCommands\"\n"
+		<< "\t\tname \"_ondemostart\"\n"
+		<< "\t\tstarttick \"" << specSetupTicks << "\"\n"
+		<< "\t\tcommands \"alias gotonextfrag echo nonext";
+
+	if( !m_bIsPOV )
+	{
+		vdm_output << ";spec_menu hide;spec_mode;hidepanel all";
+	}
+	
+	vdm_output << "\"\n\t}\n";
+	
+	int gotoNextFragTick = specSetupTicks + 5;
+	bool bWroteCfg = false;
+
+	for( size_t iFrag = 0; iFrag < m_Frags.size(); ++iFrag )
+	{
+		const Frag &frag = m_Frags[ iFrag ];
+
+		const int nextFragTick = std::max( frag.GetStartTick() - 3 * GetTickRate(), specSetupTicks );
+
+		if( nextFragTick > gotoNextFragTick + GetTickRate() )
+		{
+			vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
+				<< "\t\tfactory \"PlayCommands\"\n"
+				<< "\t\tname \"_gotonextfrag\"\n"
+				<< "\t\tstarttick \"" << gotoNextFragTick << "\"\n"
+				<< "\t\tcommands \"demo_gototick " << nextFragTick << "\"\n\t}\n";
+		}
+		
+		gotoNextFragTick = frag.GetEndTick() + 2 * GetTickRate();
+
+		// GetTickCount can return 0, so in those cases m_iCurrentTick will hopefully contain the last actual tick
+		// If there will be problems, another variable might be required that saves the highest reached tick,
+		// in case m_iCurrentTick goes back down at the end of the demo
+		const int lastTick = GetTickCount() == 0 ? m_iCurrentTick : GetTickCount();
+		assert( lastTick > 50 );
+
+		// Make sure next gototick doesn't happen after the demo ends
+		if( gotoNextFragTick > lastTick )
+		{
+			gotoNextFragTick = std::max( frag.GetEndTick(), lastTick - 15 );
+		}
+
+		std::string cfgName = "__" + filename + (iFrag > 0 ? ("_" + std::to_string(iFrag + 1)) : "") + ".cfg";
+
+		vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
+			<< "\t\tfactory \"PlayCommands\"\n"
+			<< "\t\tname \"_onfragstart\"\n"
+			<< "\t\tstarttick \"" << nextFragTick + specSetupTicks << "\"\n"
+			<< "\t\tcommands \"alias gotonextfrag " << (iFrag < m_Frags.size() - 1 ? ("demo_gototick " + std::to_string( gotoNextFragTick + 10 )) : "echo nonext");
+
+		bool bUseCfg = false;
+		if( !m_bIsPOV )
+		{
+			bool bNameHasSpaces = StrHasSpaces( frag.GetPlayername() );
+
+			if( Settings()->ShouldWriteVDMConfig() && bNameHasSpaces )
+			{
+				vdm_output << ";exec " << cfgName << ((vdmSubDir.empty() || !_stricmp( vdmSubDir.c_str(), "cstrike" )) ? "" : (" */" + vdmSubDir));
+				bUseCfg = true;
+			}
+			else
+			{
+				if( bNameHasSpaces )
+					vdm_output << ";spec_player \\\"" << frag.GetPlayername() << "\\\"";
+				else
+					vdm_output << ";spec_player " << frag.GetPlayername();
+			}
+		}
+		
+		vdm_output << "\"\n\t}\n";
+
+		// If this is the last frag, write a dummy command at the end so we can chain this easily later
+		if( iFrag == m_Frags.size() - 1 )
+		{
+			vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
+				<< "\t\tfactory \"PlayCommands\"\n"
+				<< "\t\tname \"_onlastfragend\"\n"
+				<< "\t\tstarttick \"" << std::min(gotoNextFragTick + GetTickRate(), lastTick - 15) << "\"\n"
+				<< "\t\tcommands \"\"\n\t}\n";
+		}
+
+		// Write the cfg file
+		if( bUseCfg )
+		{
+			if( !std::filesystem::exists( writeToDir + "cfg" ) )
+			{
+				std::filesystem::create_directories( writeToDir + "cfg" );
+			}
+
+			std::ofstream cfg_output( writeToDir + "cfg\\" + cfgName, std::ios::binary );
+
+			if( !cfg_output.is_open() )
+			{
+				printf( "%sFailed to write VDM config file for frag %d!\n", Settings()->BatchProcessingEnabled() ? " L " : "", iFrag + 1 );
+				continue;
+			}
+
+			cfg_output << "spec_player \"" << frag.GetPlayername() << "\"";
+
+			cfg_output.close();
+
+			bWroteCfg = true;
+		}
+	}
+
+	vdm_output << '}';
+
+	vdm_output.close();
+
+	if( !Settings()->BatchProcessingEnabled() )
+	{
+		const std::string writeDir = bShouldWriteToDemoDir ? "demo's" : "program";
+		if( vdmSubDir.empty() )
+		{
+			printf( "VDM file %s been written to %s folder\n\n", bWroteCfg ? "and its configs have" : "has", writeDir.c_str() );
+		}
+		else
+		{
+			printf( "VDM file %s been written to \"%s\" in %s folder\n\n", bWroteCfg ? "and its configs have" : "has", vdmSubDir.c_str(), writeDir.c_str() );
 		}
 	}
 }

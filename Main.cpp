@@ -11,12 +11,14 @@
 #include <ctime>
 #include <fstream>
 #include <format>
+#include <string>
 
 std::string g_ProgramDirectory;							///< Program executable directory (with '\' in the end)
 std::string g_BatchDirectory;							///< Directory of the batch to be processed (with '\' in the end)
 std::string g_BatchOutput;								///< Buffer where all the found frags will be written during batch processing
 std::vector< std::string > g_FailedDemos;				///< Filenames of the demos that failed to parse and their error messages
-static std::vector< std::string > s_DemosToParse;		///< Filenames of all the demos that will be parsed
+static std::vector< std::string > s_DemosToParse;		///< Filenames/paths of all the demos that will be parsed
+static std::vector< std::string > s_VDMsToChain;		///< Filenames/paths of all the VDMs that will be chained
 extern std::vector< ParsingWarning_t > g_WarningDemos;	///< Filenames and the warning numbers of demos where a warning was triggered
 
 /**
@@ -61,6 +63,180 @@ bool FindDemosInFolder( const std::string &sDirectory )
 }
 
 /**
+ * Chains VDM files together by automatically loading the next demo after the previous demo's last frag ends
+ * @return						true if all VDMs were successfully chained, false otherwise
+ */
+bool ChainVDMs( void )
+{
+	assert( s_VDMsToChain.size() > 1 );
+
+	const std::string sVDMDir = Settings()->GetVDMDirectory();
+
+	for( size_t iCurVDM = 0; iCurVDM < s_VDMsToChain.size(); ++iCurVDM )
+	{
+		std::ifstream file( s_VDMsToChain[ iCurVDM ], std::ios::binary );
+
+		if( !file.is_open() )
+			return false;
+
+		std::vector< std::string > lines;
+		std::vector< size_t > fragStartLines;
+		std::string sLine;
+		size_t iPrevDemoLine{ 0 }, iNextDemoLine{ 0 };
+
+		while( std::getline( file, sLine ) )
+		{
+			if( sLine.find( "_ondemostart" ) != std::string::npos )
+				iPrevDemoLine = lines.size() + 2;
+			else if( sLine.find( "_onlastfragend" ) != std::string::npos )
+				iNextDemoLine = lines.size() + 2;
+			else if( sLine.find( "_onfragstart" ) != std::string::npos )
+				fragStartLines.emplace_back( lines.size() + 2 );
+
+			lines.emplace_back( sLine );
+		}
+
+		file.close();
+
+		// Valid VDM file?
+		if( lines[0] != "demoactions" )
+			return false;
+
+		if( iPrevDemoLine == 0 || iPrevDemoLine >= lines.size()
+		|| iNextDemoLine == 0 || iNextDemoLine >= lines.size() )
+			return false;
+
+		std::string sPrevDemo = (iCurVDM > 0) ? s_VDMsToChain[ iCurVDM - 1 ] : s_VDMsToChain[ s_VDMsToChain.size() - 1 ];
+		std::string sNextDemo = (iCurVDM >= s_VDMsToChain.size() - 1) ? s_VDMsToChain[ 0 ] : s_VDMsToChain[ iCurVDM + 1 ];
+		RemoveFileNameFolders( sPrevDemo );
+		RemoveFileExtension( sPrevDemo );
+		RemoveFileNameFolders( sNextDemo );
+		RemoveFileExtension( sNextDemo );
+
+		std::string sActualDir = (sVDMDir.empty() || !_stricmp( sVDMDir.c_str(), "cstrike" )) ? "" : (sVDMDir + '/');
+
+		// Add gotoprevdemo alias
+		const std::string &sOldPrevDemoLine = lines[ iPrevDemoLine ];
+		size_t cmdStartPos = sOldPrevDemoLine.find_first_of( '\"' );
+
+		if( cmdStartPos == std::string::npos )
+			return false;
+
+		std::string sNewPrevDemoLine = sOldPrevDemoLine.substr( 0, cmdStartPos + 1 );
+		sNewPrevDemoLine += "alias gotoprevdemo playdemo " + sActualDir + sPrevDemo + ".dem;";
+		sNewPrevDemoLine += sOldPrevDemoLine.substr( sOldPrevDemoLine.find( "alias gotonextfrag" ) );
+		lines[ iPrevDemoLine ] = sNewPrevDemoLine;
+
+		// Automatically load the next demo after last frag ends
+		lines[ iNextDemoLine ] = "\t\tcommands \"playdemo " + sActualDir + sNextDemo + ".dem\"";
+
+		// Also make gotonextfrag load the next demo when the last frag starts
+		if( fragStartLines.size() > 0 )
+		{
+			const std::string &sOldLine = lines[ fragStartLines[ fragStartLines.size() - 1 ] ];
+			size_t pos = sOldLine.find( "echo nonext" );
+
+			if( pos != std::string::npos )
+			{
+				std::string sNewLine = sOldLine.substr( 0, pos ) + "playdemo " + sActualDir + sNextDemo + ".dem";
+				sNewLine += sOldLine.substr( pos + 11 );
+				lines[ fragStartLines[ fragStartLines.size() - 1 ] ] = sNewLine;
+			}
+		}
+
+		// Need to get rid of the trailing slash for the next part
+		if( !sActualDir.empty() )
+			sActualDir.pop_back();
+
+		// Patch directories on frag start cfg executions if necessary
+		for( size_t iLine : fragStartLines )
+		{
+			if( iLine >= lines.size() )
+				continue;
+
+			std::string &sExecLine = lines[ iLine ];
+
+			if( sExecLine.find( ";exec __" ) == std::string::npos )
+				continue;
+
+			size_t dirPos = sExecLine.find( "*/" );
+
+			size_t cmdEndPos = sExecLine.find_last_of( '\"' );
+
+			if( cmdEndPos == std::string::npos )
+				return false;
+
+			if( dirPos == std::string::npos )
+			{
+				if( sActualDir.empty() )
+					continue;
+
+				sExecLine = sExecLine.substr( 0, cmdEndPos );
+				sExecLine += " */" + sActualDir + "\"";
+			}
+			else
+			{
+				if( sActualDir.empty() )
+				{
+					sExecLine = sExecLine.substr( 0, dirPos-1 ) + "\"";
+				}
+				else
+				{
+					const std::string sCurDir = sExecLine.substr( dirPos + 2, cmdEndPos - ( dirPos + 2 ) );
+
+					if( _stricmp( sActualDir.c_str(), sCurDir.c_str() ) )
+					{
+						sExecLine = sExecLine.substr( 0, dirPos+2 ) + sActualDir + "\"";
+					}
+				}
+			}
+		}
+
+		// Now write the chained VDM
+		std::ofstream output( s_VDMsToChain[ iCurVDM ], std::ios::binary );
+
+		if( !output.is_open() )
+			return false;
+
+		for( size_t iLine = 0; iLine < lines.size(); ++iLine )
+		{
+			// Write the demo's name on the screen as the first action
+			// Known issue: on POV demos, the text seems to disappear at round starts
+			if( iLine == 2 )
+			{
+				std::string filename = s_VDMsToChain[ iCurVDM ];
+				RemoveFileNameFolders( filename );
+				RemoveFileExtension( filename );
+
+				output << "\t\"1\"\n\t{\n"
+					<< "\t\tfactory \"TextMessageStart\"\n"
+					<< "\t\tname \"_demoname\"\n"
+					<< "\t\tstarttick \"15\"\n"
+					<< "\t\tmessage \"" << filename << ".dem\"\n"
+					<< "\t\tfont \"HUDNumber4\"\n"
+					<< "\t\tholdtime \"99999.0\"\n"
+					<< "\t\tx \"0.1\"\n"
+					<< "\t\ty \"0.0\"\n"
+					<< "\t\tr1 \"250\"\n"
+					<< "\t\tg1 \"60\"\n"
+					<< "\t\tb1 \"245\"\n"
+					<< "\t\ta1 \"255\"\n"
+					<< "\t}\n";
+			}
+
+			output << lines[ iLine ];
+
+			if( iLine < lines.size() - 1 )
+				output << '\n';
+		}
+
+		output.close();
+	}
+
+	return true;
+}
+
+/**
  * Writes the results of the batch process to a file
  * @param bAborted				whether the process was aborted or not
  * @return						true if successfully written, false otherwise
@@ -88,7 +264,7 @@ bool WriteBatchOutput( bool bAborted )
 
 	std::ofstream file_output;
 
-	bool bShouldWriteToDemoDir = Settings()->ShouldWriteOutputToDemoDirectory() && g_BatchDirectory.find( "AppData\\Local\\Temp" ) == std::string::npos;
+	const bool bShouldWriteToDemoDir = Settings()->ShouldWriteOutputToDemoDirectory();
 
 	// Where should the file be written to?
 	if( bShouldWriteToDemoDir )
@@ -122,7 +298,7 @@ bool WriteBatchOutput( bool bAborted )
 
 	if( g_FailedDemos.size() )
 	{
-		file_output.write( "DEMOS WITH PARSING ERRORS:\n", 27 );
+		file_output << "DEMOS WITH PARSING ERRORS:\n";
 
 		for( size_t i = 0; i < g_FailedDemos.size(); ++i )
 		{
@@ -137,9 +313,9 @@ bool WriteBatchOutput( bool bAborted )
 	if( g_WarningDemos.size() )
 	{
 		if( wrote_errors_or_warnings )
-			file_output.write( "\n", 1 );
+			file_output << "\n";
 
-		file_output.write( "DEMOS WITH WARNINGS:\n", 21 );
+		file_output << "DEMOS WITH WARNINGS:\n";
 
 		for( size_t i = 0; i < g_WarningDemos.size(); ++i )
 		{
@@ -155,21 +331,21 @@ bool WriteBatchOutput( bool bAborted )
 	}
 
 	if( wrote_errors_or_warnings )
-		file_output.write( "\n\nFOUND FRAGS:\n\n", 16 );
+		file_output << "\n\nFOUND FRAGS:\n\n";
 
 	if( g_BatchOutput.length() )
 		file_output.write( g_BatchOutput.c_str(), g_BatchOutput.length() );
 	else
-		file_output.write( "No frags found with the used settings\n\n", 39 );
+		file_output << "No frags found with the used settings\n\n";
 
-	file_output.write( "Batch end", 9 );
+	file_output << "Batch end";
 
 	if( bAborted )
-		file_output.write( " (process aborted)", 18 );
+		file_output << " (process aborted)";
 
 	file_output.close();
 
-	printf( "Results have been written to file %s in %s folder\n\n", szOutputFile, bShouldWriteToDemoDir? "processed" : "program" );
+	printf( "Results have been written to file \"%s\" in %s folder\n\n", szOutputFile, bShouldWriteToDemoDir? "processed" : "program" );
 
 	return true;
 }
@@ -282,6 +458,8 @@ int main( int argc, char *argv[] )
 
 		if( FileHasExtension( szArg, "dem", true ) )
 			s_DemosToParse.emplace_back( szArg );
+		if( FileHasExtension( szArg, "vdm", true ) )
+			s_VDMsToChain.emplace_back( szArg );
 		else if( FileHasExtension( szArg, "ini" ) )
 			szSettingsArg = szArg;
 		else if( IsValidDirectory( szArg ) )
@@ -292,7 +470,7 @@ int main( int argc, char *argv[] )
 
 	// Get program executable directory (suffixed with '\')
 	g_ProgramDirectory = argv[0];
-	size_t pos = g_ProgramDirectory.find_last_of( '\\' );
+	size_t pos = g_ProgramDirectory.find_last_of( "/\\" );
 	if( pos != std::string::npos )
 	{
 		g_ProgramDirectory = g_ProgramDirectory.substr( 0, pos+1 );
@@ -315,7 +493,7 @@ int main( int argc, char *argv[] )
 		{
 			// If there were demo args, batch directory is the directory of the first demo
 			const std::string &sFile = s_DemosToParse[ 0 ];
-			size_t pos = sFile.find_last_of( '\\' );
+			size_t pos = sFile.find_last_of( "/\\" );
 			if( pos != std::string::npos )
 			{
 				g_BatchDirectory = sFile.substr( 0, pos + 1 );
@@ -332,7 +510,36 @@ int main( int argc, char *argv[] )
 	}
 
 	// Load program settings
-	Settings()->LoadSettings( szSettingsArg, szBatchDirArg != nullptr );
+	if( !Settings()->LoadSettings( szSettingsArg, szBatchDirArg != nullptr ) )
+	{
+		system( "pause" );
+		return 0;
+	}
+
+	// Only chain VDMs if no demos are going to be parsed
+	if( s_VDMsToChain.size() > 0 && s_DemosToParse.size() == 0 )
+	{
+		if( s_VDMsToChain.size() == 1 )
+		{
+			printf( "%s: More than 1 VDM file required for chaining!\n", CSSFF_NAME );
+			system( "pause" );
+			return 0;
+		}
+		else
+		{
+			if( ChainVDMs() )
+			{
+				printf( "%s: All %d VDM files successfully chained\n", CSSFF_NAME, s_VDMsToChain.size() );
+			}
+			else
+			{
+				printf( "%s: Failed to chain VDM files! Make sure all the files are unedited and were generated by the program\n", CSSFF_NAME );
+			}
+
+			system( "pause" );
+			return 0;
+		}
+	}
 
 	// Should we batch process the folder?
 	if( s_DemosToParse.empty() )

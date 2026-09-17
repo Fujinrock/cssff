@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <unordered_map>
+#include <vector>
 #include <string>
 
 enum MultiKillFragType;
@@ -13,9 +14,11 @@ typedef const char *Key;
 class SettingsManager
 {
 public:
+	~SettingsManager( void );
+
 	static SettingsManager *Instance( void );
 
-	void LoadSettings( const char *szSettingsFile, bool bBatchDirSupplied );
+	bool LoadSettings( const char *szSettingsFile, bool bBatchDirSupplied );
 
 	// Checks if the multi-kill frag should be ticked for the given weapons
 	// Also checks if the frag is fast enough to be ticked or stationary
@@ -30,6 +33,9 @@ public:
 
 	bool DumpToFileEnabled( void );
 	bool ShouldWriteOutputToDemoDirectory( void );
+	bool ShouldWriteVDM( void );
+	bool ShouldWriteVDMConfig( void );
+	const char *GetVDMDirectory( void );
 
 	bool ShouldTickFragsVsBots( void );
 	bool ShouldTickFragsByBots( void );
@@ -61,6 +67,7 @@ private:
 		int m_int;
 		float m_float;
 		bool m_bool;
+		const char *m_string;
 	};
 
 	typedef std::unordered_map< std::string, setting_value > WeaponSettingsField;
@@ -78,6 +85,8 @@ private:
 		WeaponSettingsField *category_settings; ///< Settings for the weapon category, never NULL
 	}
 	m_fcats;
+
+	std::vector< const char * > m_allocatedStrings;
 
 	int m_iMaxFlickDuration;
 

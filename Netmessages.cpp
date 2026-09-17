@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "Settings.h"
 #include <cstdio>
+#include <cstdint>
 
 // =====================================================================================================================================================================
 
@@ -478,7 +479,7 @@ void DemoParser::HandleSVCGetCvarValue( bf_read &reader )
 void DemoParser::HandleDemoPacket( bf_read &reader )
 {
 	// Skip reading unneeded information at the beginning of the packet (demo cmd info + nSeqNrIn & nSeqNrOut)
-	reader.SeekRelative( BYTES2BITS((sizeof(democmdinfo_t) + 2 * sizeof(long))) );
+	reader.SeekRelative( BYTES2BITS((sizeof(democmdinfo_t) + 2 * sizeof(int32_t))) );
 
 	int datasize = reader.ReadLong(); // In bytes
 
