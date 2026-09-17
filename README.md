@@ -17,7 +17,8 @@ Other features include:
 - Support for ClientMod demos
 - Frag timing
 - Batch processing
-- Error handling
+- VDM generation and chaining of demos for quick reviewing of found frags
+- Robust error handling
 - Plenty of settings to filter out bad frags
 - Ability to have different settings for different weapons and weapon categories
 - Dumping of demo information
@@ -25,7 +26,7 @@ Other features include:
 - And more...
 
 ## Support
-cssff is only for Windows, and it only supports demos that are compatible with CS:S v34 (build 4044). Demos from the Steam version or v77 of CS:S are NOT supported. This is because the program was meant for editors/moviemakers to help them find new content for their projects, and CS:S versions past v34 have never been popular for that purpose.
+cssff is only for Windows, and it only supports demos that are compatible with CS:S v34 (build 4044). Demos from the current Steam version or Orange Box versions of CS:S are NOT supported. This is because the program is meant to help editors/moviemakers find new content for their projects, and CS:S versions past v34 have never been popular for that purpose.
 
 ## How to build
 The project should not require any outside libraries, but C++ 20 features are used. A solution file for Visual Studio 2022 is included, which can be used to build the project. When building, the target platform should be set to Win32 (x86).
@@ -38,7 +39,7 @@ The settings system of cssff is hierarchial. This means that the settings are di
 
 The syntax for specifying a category in the settings file is [categoryname], and any settings that follow will only apply to that category. If no category is specified at any point, the general category is used. Multiple categories can be used at the same time by stacking them in consecutive rows, which means that the settings that follow will apply to all of those categories. An example of the contents of a valid settings file with all fields and weapon categories is included in the repository.
 
-The default settings file should be called "cssff_settings.ini" and it should be placed in the same directory as the executable. You can also drag and drop another .ini file onto the executable alongside any demos to read the settings from that file instead. If an entire folder is processed, the settings file can be placed inside that folder and it will be used if it's the only .ini file inside the folder. If no settings file is found or specified, the program will use default built-in values.
+The default settings file should be called "cssff_settings.ini" and it should be placed in the same directory as the executable. You can also drag and drop another .ini file onto the executable alongside any demos to read the settings from that file instead. If an entire folder is processed, the settings file can be placed inside that folder and it will be used if it's the only .ini file inside the folder. If no settings file is found or specified, the program will terminate.
 
 ---
 **Valid weapon category names:**
@@ -145,6 +146,9 @@ The following settings fields should only be set in the general category, and ar
 |dump_to_file|boolean|Whether to dump frags, warnings and errors to a text file|
 |enable_batch_processing|boolean|Enable/disable batch processing|
 |write_output_to_demo_directory|boolean|Whether the output file should be written to the folder where the processed demo/batch was or to the executable folder|
+|create_vdm_file|boolean|Whether to create a VDM file for quick reviewing of found frags|
+|vdm_write_cfg|boolean|Whether to write an accompanying config file for the VDM **(SEE EXTRA NOTES IN VDM SECTION BELOW!)**|
+|vdm_file_directory|string|The subfolder relative to cstrike where demos will be played from **(SEE EXTRA NOTES IN VDM SECTION BELOW!)**|
 |tick_frags_vs_bots|boolean|Whether frags against bots are ticked or not|
 |tick_frags_by_bots|boolean|Whether frags by bots are ticked or not|
 
@@ -152,6 +156,40 @@ The following settings fields should only be set in the general category, and ar
 ### Batch processing
 If no demos are specified and batch processing is enabled when running the program, the program will search for demos from the executable directory and batch process them. You can also drag and drop multiple demos or an entire folder of demos onto the program to begin batch processing. Batch processing can be disabled in the settings file by changing "enable_batch_processing" to "false". Parsing more than one demo automatically enables "dump_to_file", which means results are always dumped to file when batch processing. When processing folders, do note that only one folder can be parsed at a time, and no subfolders are processed.
 
+### VDM files
+To speed up the frag-reviewing process, cssff provides the option to automatically generate a [VDM file](https://developer.valvesoftware.com/wiki/Demo_Recording_Tools#Demo_editor) to go with the demo. When you play the demo, the VDM file is automatically loaded and the demo will jump to the frag's beginning and spectate the fragger. If there are multiple frags on the same demo, all the frags will be played in order. In order to make this work, the VDM file (and its accompanying cfg folder+files, if any) should be placed in the demo's directory. You can also chain multiple VDM files together by dragging and dropping them onto cssff. When chained, the next demo in the chain will be automatically loaded when the last frag on the current demo ends. In addition, the currently loaded demo's name will be displayed on the screen during playback.
+
+#### Notes regarding VDM settings
+The value of the setting "vdm_file_directory" should be set to the name of the subfolder in the cstrike folder that you will load the demos from. If you load the demos from cstrike, you can leave it empty or enter "cstrike". This also applies when you are chaining the VDM files. **Important: The cfg folder that will be generated alongside the VDM has to also be placed in the subfolder and not in cstrike!**
+
+The value of the setting "vdm_write_cfg" should generally be set to 1/true. Config files are needed in cases where the fragger's name contains spaces because of an oversight on Valve's part. Unless you have a way to enable escape sequences on the keyvalues object that parses the VDM file, **do NOT turn this setting off!**
+
+#### Recommended workflow
+This is an example of how you might want to review a bunch of frags:
+1. Parse the demos with VDM generation enabled.
+2. Drag and drop all the generated VDM files onto cssff to chain them.
+3. Move the demos, the VDM files and the cfg folder into the desired subfolder in cstrike.
+4. Play the first demo in the folder to start reviewing the frags.
+5. Use the binds below to control the playback without having to open the console/demoui.
+
+#### Aliases
+The VDM files define a couple of useful aliases that you can use when watching the demos:
+- gotonextfrag = Jump to the next frag on the demo. In a chain, this will load the next demo when used during the last frag on the current demo.
+- gotoprevdemo = Load the previous demo in the chain. If the VDM is not a part of a chain, this alias will not be defined.
+
+#### Useful binds
+These binds might come in handy when reviewing frags:
+> alias _tdp1 "demo_pause;alias toggledemopause _tdp2"  
+> alias _tdp2 "demo_resume;alias toggledemopause _tdp1"  
+> alias toggledemopause _tdp1  
+> bind space toggledemopause  
+> bind uparrow gotonextfrag  
+> bind downarrow gotoprevdemo  
+> bind rightarrow "multvar host_timescale 0.0625 8 2"  
+> bind leftarrow "multvar host_timescale 0.0625 8 0.5"  
+> bind enter "demo_gototick 0"  
+
+---
 ## Understanding the output
 Each found frag will have the following information:
 - Tick where the frag happens
