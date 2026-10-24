@@ -147,6 +147,7 @@ The following settings fields should only be set in the general category, and ar
 |enable_batch_processing|boolean|Enable/disable batch processing|
 |write_output_to_demo_directory|boolean|Whether the output file should be written to the folder where the processed demo/batch was or to the executable folder|
 |create_vdm_file|boolean|Whether to create a VDM file for quick reviewing of found frags|
+|create_vdm_file_batch_only|boolean|Whether to only create the VDM files when batch processing|
 |vdm_write_cfg|boolean|Whether to write an accompanying config file for the VDM **(SEE EXTRA NOTES IN VDM SECTION BELOW!)**|
 |vdm_file_directory|string|The subfolder relative to cstrike where demos will be played from **(SEE EXTRA NOTES IN VDM SECTION BELOW!)**|
 |tick_frags_vs_bots|boolean|Whether frags against bots are ticked or not|
