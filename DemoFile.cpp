@@ -10,7 +10,7 @@ DemoFile::DemoFile( const std::string &filename )
 
 	std::ifstream file( filename, std::ios::binary );
 
-	if( !file.is_open() )
+	if ( !file.is_open() )
 	{
 		m_filebuffer = nullptr;
 		m_filesize = 0;
@@ -22,7 +22,7 @@ DemoFile::DemoFile( const std::string &filename )
 	std::streamsize size = file.tellg();
 	file.seekg( 0, std::ios_base::beg );
 
-	if( size > 0 )
+	if ( size > 0 )
 	{
 		m_filebuffer = new char[ (uint32)size ];
 	}
@@ -46,13 +46,13 @@ DemoFile::DemoFile( const std::string &filename )
 
 void DemoFile::CheckValidity( void )
 {
-	if( !m_filebuffer )
+	if ( !m_filebuffer )
 	{
 		m_error = COULD_NOT_OPEN_FILE;
 		return;
 	}
 
-	if( m_filesize < sizeof( demoheader_t ) )
+	if ( m_filesize < sizeof( demoheader_t ) )
 	{
 		m_error = FILE_TOO_SMALL;
 		return;
@@ -61,11 +61,11 @@ void DemoFile::CheckValidity( void )
 	demoheader_t *hdr = (demoheader_t *)m_filebuffer;
 
 	// Check if it's a 1.6/GoldSrc demo
-	if( !strcmp( hdr->demofilestamp, DEMO_HEADER_ID_GOLDSRC ) )
+	if ( !strcmp( hdr->demofilestamp, DEMO_HEADER_ID_GOLDSRC ) )
 	{
 		// In GoldSrc, the demo header doesn't contain servername and clientname fields,
 		// so the gamedirectory is read into clientname on the Source demo header
-		if( !strcmp( hdr->clientname, CS_GAMEDIR ) )
+		if ( !strcmp( hdr->clientname, CS_GAMEDIR ) )
 			m_error = CS_DEMO;
 		else
 			m_error = GOLDSRC_DEMO;
@@ -74,32 +74,32 @@ void DemoFile::CheckValidity( void )
 	}
 
 	// Check if it's a CS:GO demo
-	if( !strcmp( hdr->gamedirectory, CSGO_GAMEDIR ) )
+	if ( !strcmp( hdr->gamedirectory, CSGO_GAMEDIR ) )
 	{
 		m_error = CSGO_DEMO;
 		return;
 	}
 
 	// Now check if it's a valid v34 demo
-	if( strcmp( hdr->demofilestamp, DEMO_HEADER_ID ) )
+	if ( strcmp( hdr->demofilestamp, DEMO_HEADER_ID ) )
 	{
 		m_error = INVALID_HDR_ID;
 		return;
 	}
 
-	if( hdr->demoprotocol != DEMO_PROTOCOL )
+	if ( hdr->demoprotocol != DEMO_PROTOCOL )
 	{
 		m_error = INVALID_DEM_PROTOCOL;
 		return;
 	}
 
-	if( strcmp( hdr->gamedirectory, CS_GAMEDIR ) )
+	if ( strcmp( hdr->gamedirectory, CS_GAMEDIR ) )
 	{
 		m_error = INVALID_GAMEDIR;
 		return;
 	}
 
-	if( hdr->networkprotocol != NETWORK_PROTOCOL_V34 )
+	if ( hdr->networkprotocol != NETWORK_PROTOCOL_V34 )
 	{
 		m_error = INVALID_NET_PROTOCOL;
 		return;
@@ -110,7 +110,7 @@ void DemoFile::CheckValidity( void )
 
 DemoFile::~DemoFile( void )
 {
-	if( m_filebuffer )
+	if ( m_filebuffer )
 		delete[] m_filebuffer;
 }
 

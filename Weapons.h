@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // This matches CSWeaponID
-static const char * s_WeaponAliasInfo[] = 
+static const char *s_WeaponAliasInfo[] =
 {
 	"NONE",		// 0 WEAPON_NONE
 	"P228",		// 1 WEAPON_P228

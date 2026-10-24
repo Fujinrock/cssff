@@ -7,7 +7,7 @@
  */
 enum
 {
-	dem_signon	= 1,						///< A startup message, process as fast as possible
+	dem_signon = 1,							///< A startup message, process as fast as possible
 	dem_packet,								///< A normal network packet that we stored off
 	dem_synctick,							///< Sync client clock to demo tick
 	dem_consolecmd,							///< Console command
@@ -59,7 +59,7 @@ struct democmdinfo_t
  */
 enum DemoError
 {
-	DEMO_OK	= 0,
+	DEMO_OK = 0,
 	COULD_NOT_OPEN_FILE,
 	FILE_TOO_SMALL,
 	INVALID_HDR_ID,
@@ -83,7 +83,7 @@ public:
 
 	bool				IsValidDemo( void ) const;	///< Is this demo a valid CS:S v34 demo
 	DemoError			GetError( void ) const;		///< Get the error ID if the demo is invalid
-	char *				GetBuffer( void ) const;	///< Get the raw contents of the demo
+	char *GetBuffer( void ) const;	///< Get the raw contents of the demo
 	std::string			GetFileName( void ) const;	///< Get the file name without folders
 	uint32				GetFileSize( void ) const;	///< Get the file size in bytes
 
@@ -96,7 +96,7 @@ private:
 
 	DemoError			m_error;
 
-	char *				m_filebuffer;
+	char *m_filebuffer;
 	std::string			m_filename;
 	uint32				m_filesize;
 };

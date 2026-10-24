@@ -10,6 +10,7 @@
 
 extern std::string g_ProgramDirectory;
 extern std::string g_BatchDirectory;
+extern std::vector< std::string > g_VDMsToChain;
 
 // Keys used in reading the settings file and in finding settings per category
 //
@@ -21,6 +22,7 @@ extern std::string g_BatchDirectory;
 #define KEY_WRITE_FILE_TO_DEMO_DIR				"write_output_to_demo_directory"
 #define KEY_ENABLE_BATCH_PROCESSING				"enable_batch_processing"
 #define KEY_CREATE_VDM							"create_vdm_file"
+#define KEY_CREATE_VDM_BATCH_ONLY				"create_vdm_file_batch_only"
 #define KEY_VDM_WRITE_CFG						"vdm_write_cfg"
 #define KEY_VDM_DIR								"vdm_file_directory"
 #define KEY_TICK_5KS							"tick_5ks"
@@ -158,7 +160,7 @@ extern std::string g_BatchDirectory;
 
 SettingsManager::~SettingsManager( void )
 {
-	for( auto s : m_allocatedStrings )
+	for ( auto s : m_allocatedStrings )
 	{
 		delete[] s;
 	}
@@ -201,6 +203,7 @@ SettingsManager::SettingsManager()
 	general_settings[ KEY_WRITE_FILE_TO_DEMO_DIR ].m_bool = false;
 	general_settings[ KEY_ENABLE_BATCH_PROCESSING ].m_bool = false;
 	general_settings[ KEY_CREATE_VDM ].m_bool = false;
+	general_settings[ KEY_CREATE_VDM_BATCH_ONLY ].m_bool = true;
 	general_settings[ KEY_VDM_WRITE_CFG ].m_bool = true;
 	general_settings[ KEY_VDM_DIR ].m_string = "";
 	general_settings[ KEY_TICK_5KS ].m_bool = true;
@@ -262,7 +265,7 @@ SettingsManager::SettingsManager()
 
 	m_iMaxFlickDuration = general_settings[ KEY_FLICKSHOT_MAX_DURATION ].m_int;
 
-	memset( &m_fcats, 0, sizeof(m_fcats) );
+	memset( &m_fcats, 0, sizeof( m_fcats ) );
 }
 
 // =====================================================================================================================================================================
@@ -274,14 +277,14 @@ SettingsManager::SettingsManager()
  */
 bool GetSettingsFileFromDirectory( const std::string &sDirectory, std::string &outPath )
 {
-	std::string strSearchPath = sDirectory + "*.ini";
+	const std::string strSearchPath = sDirectory + "*.ini";
 	std::string strFilename = "";
 
 	WIN32_FIND_DATAA data;
 
 	HANDLE hFile = FindFirstFileA( strSearchPath.c_str(), &data );
 
-	if( hFile == INVALID_HANDLE_VALUE )
+	if ( hFile == INVALID_HANDLE_VALUE )
 	{
 		FindClose( hFile );
 		return false;
@@ -289,16 +292,16 @@ bool GetSettingsFileFromDirectory( const std::string &sDirectory, std::string &o
 
 	do
 	{
-		if( !( data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
+		if ( !( data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
 		{
 			std::string sTemp = data.cFileName;
 
 			// Make sure it's actually an ini extension and doesn't just start with that
-			if( !FileHasExtension( sTemp, "ini" ) )
+			if ( !FileHasExtension( sTemp, "ini" ) )
 				continue;
 
 			// If there are multiple settings files in the directory, the default file will be used
-			if( !strFilename.empty() )
+			if ( !strFilename.empty() )
 			{
 				printf( "Warning: Multiple settings files found in batch directory - using default file!\n" );
 				FindClose( hFile );
@@ -308,11 +311,11 @@ bool GetSettingsFileFromDirectory( const std::string &sDirectory, std::string &o
 			strFilename = sTemp;
 		}
 	}
-	while( FindNextFileA( hFile, &data ) != 0 );
+	while ( FindNextFileA( hFile, &data ) != 0 );
 
 	FindClose( hFile );
 
-	if( strFilename.empty() )
+	if ( strFilename.empty() )
 		return false;
 
 	outPath = sDirectory + strFilename;
@@ -327,14 +330,14 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 {
 	using namespace std;
 
-	if( m_bSettingsLoaded )
+	if ( m_bSettingsLoaded )
 		return true;
 
 	string sConfigPath;
 
-	if( !szSettingsFile )
+	if ( !szSettingsFile )
 	{
-		if( !bBatchDirSupplied || !GetSettingsFileFromDirectory( g_BatchDirectory, sConfigPath ) )
+		if ( !bBatchDirSupplied || !GetSettingsFileFromDirectory( g_BatchDirectory, sConfigPath ) )
 		{
 			// Use default file if no file or batch directory with file was specified
 			sConfigPath = g_ProgramDirectory + DEFAULT_SETTINGS_FILE;
@@ -347,16 +350,16 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 
 	ifstream file( sConfigPath );
 
-	if( !file.is_open() )
+	if ( !file.is_open() )
 	{
 		// If the user wants to parse the demos in the program's folder or just dragged some demos onto the program,
 		// try opening any settings file we can find from the program folder
-		if( !szSettingsFile && !bBatchDirSupplied && GetSettingsFileFromDirectory( g_ProgramDirectory, sConfigPath ) )
+		if ( !szSettingsFile && !bBatchDirSupplied && GetSettingsFileFromDirectory( g_ProgramDirectory, sConfigPath ) )
 		{
 			file.open( sConfigPath );
 		}
 
-		if( !file.is_open() )
+		if ( !file.is_open() )
 		{
 			RemoveFileNameFolders( sConfigPath );
 			printf( "Error: Could not open settings file \"%s\" - process has been aborted!\n", sConfigPath.c_str() );
@@ -366,7 +369,7 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 
 	RemoveFileNameFolders( sConfigPath );
 
-	if( sConfigPath != DEFAULT_SETTINGS_FILE )
+	if ( sConfigPath != DEFAULT_SETTINGS_FILE )
 	{
 		printf( "Using settings from file \"%s\"\n", sConfigPath.c_str() );
 	}
@@ -380,18 +383,18 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 	char vdm_dir_invalid_char = ' ';
 
 	string line;
-	while( getline( file, line ) )
+	while ( getline( file, line ) )
 	{
-		if( line.empty() || line[0] == '#' ) // Empty line or comment
+		if ( line.empty() || line[ 0 ] == '#' ) // Empty line or comment
 			continue;
 
 		auto delimiterPos = line.find( '=' ); // Find delimiter
 
-		if( delimiterPos == string::npos ) // Not a valid key-value field, check if it's a category
+		if ( delimiterPos == string::npos ) // Not a valid key-value field, check if it's a category
 		{
 			TrimString( line );
 
-			if( line.front() == '[' && line.back() == ']' )
+			if ( line.front() == '[' && line.back() == ']' )
 			{
 				// Remove brackets
 				line = line.substr( 1, line.length() - 2 );
@@ -399,10 +402,10 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 				SettingsCategory category = GetCategoryByName( line.c_str() );
 
 				// Remove previous categories if they're not all chained
-				if( !last_line_was_category )
+				if ( !last_line_was_category )
 					current_categories.clear();
 
-				if( category != CATEGORY_INVALID )
+				if ( category != CATEGORY_INVALID )
 				{
 					last_line_was_category = true;
 					current_categories.push_back( category );
@@ -419,17 +422,17 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 		last_line_was_category = false;
 
 		// No point in parsing the settings if there is no category to set them to
-		if( current_categories.empty() )
+		if ( current_categories.empty() )
 			continue;
 
 		string key = line.substr( 0, delimiterPos );
-		string value = line.substr( delimiterPos+1 );
+		string value = line.substr( delimiterPos + 1 );
 		// Remove spaces
 		TrimString( key );
 		TrimString( value );
 
 		// Remove quotation marks from value
-		if( !value.empty() && value.front() == '\"' && value.back() == '\"' )
+		if ( !value.empty() && value.front() == '\"' && value.back() == '\"' )
 			value = value.substr( 1, value.length() - 2 );
 
 #ifdef _DEBUG_PRINT_DETAILS
@@ -437,35 +440,39 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 #endif
 
 #define KeyIs( targetkey ) !_stricmp( key.c_str(), targetkey )
-		
-		if( KeyIs( KEY_DUMP_TO_FILE ) )
+
+		if ( KeyIs( KEY_DUMP_TO_FILE ) )
 		{
 			SetKeyValueBool( KEY_DUMP_TO_FILE );
 		}
-		else if( KeyIs( KEY_WRITE_FILE_TO_DEMO_DIR ) )
+		else if ( KeyIs( KEY_WRITE_FILE_TO_DEMO_DIR ) )
 		{
 			SetKeyValueBool( KEY_WRITE_FILE_TO_DEMO_DIR );
 		}
-		else if( KeyIs( KEY_ENABLE_BATCH_PROCESSING ) )
+		else if ( KeyIs( KEY_ENABLE_BATCH_PROCESSING ) )
 		{
 			SetKeyValueBool( KEY_ENABLE_BATCH_PROCESSING );
 		}
-		else if( KeyIs( KEY_CREATE_VDM ) )
+		else if ( KeyIs( KEY_CREATE_VDM ) )
 		{
 			SetKeyValueBool( KEY_CREATE_VDM );
 		}
-		else if( KeyIs( KEY_VDM_WRITE_CFG ) )
+		else if ( KeyIs( KEY_CREATE_VDM_BATCH_ONLY ) )
+		{
+			SetKeyValueBool( KEY_CREATE_VDM_BATCH_ONLY );
+		}
+		else if ( KeyIs( KEY_VDM_WRITE_CFG ) )
 		{
 			SetKeyValueBool( KEY_VDM_WRITE_CFG );
 		}
-		else if( KeyIs( KEY_VDM_DIR ) )
+		else if ( KeyIs( KEY_VDM_DIR ) )
 		{
-			if( value.empty() )
+			if ( value.empty() )
 				continue;
 
-			for( char c : value )
+			for ( char c : value )
 			{
-				if( std::isspace( c ) || !IsValidDirectoryCharacter( c ) )
+				if ( std::isspace( c ) || !IsValidDirectoryCharacter( c ) )
 				{
 					vdm_dir_invalid_char = c;
 					vdm_dir_is_valid = false;
@@ -473,237 +480,237 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 				}
 			}
 
-			if( !vdm_dir_is_valid )
+			if ( !vdm_dir_is_valid )
 				continue;
 
-			while( value.back() == '\\' || value.back() == '/' )
+			while ( value.back() == '\\' || value.back() == '/' )
 				value.pop_back();
-			while( value.front() == '\\' || value.front() == '/' )
+			while ( value.front() == '\\' || value.front() == '/' )
 				value.erase( 0, 1 );
 
 			SetKeyValueString( KEY_VDM_DIR );
 		}
-		else if( KeyIs( KEY_TICK_5KS ) )
+		else if ( KeyIs( KEY_TICK_5KS ) )
 		{
 			SetKeyValueBool( KEY_TICK_5KS );
 		}
-		else if( KeyIs( KEY_TICK_4KS ) )
+		else if ( KeyIs( KEY_TICK_4KS ) )
 		{
 			SetKeyValueBool( KEY_TICK_4KS );
 		}
-		else if( KeyIs( KEY_TICK_3KS ) )
+		else if ( KeyIs( KEY_TICK_3KS ) )
 		{
 			SetKeyValueBool( KEY_TICK_3KS );
 		}
-		else if( KeyIs( KEY_TICK_DOUBLES ) )
+		else if ( KeyIs( KEY_TICK_DOUBLES ) )
 		{
 			SetKeyValueBool( KEY_TICK_DOUBLES );
 		}
-		else if( KeyIs( KEY_TICK_TRIPLES ) )
+		else if ( KeyIs( KEY_TICK_TRIPLES ) )
 		{
 			SetKeyValueBool( KEY_TICK_TRIPLES );
 		}
-		else if( KeyIs( KEY_TICK_QUADROS ) )
+		else if ( KeyIs( KEY_TICK_QUADROS ) )
 		{
 			SetKeyValueBool( KEY_TICK_QUADROS );
 		}
-		else if( KeyIs( KEY_TICK_PENTAS ) )
+		else if ( KeyIs( KEY_TICK_PENTAS ) )
 		{
 			SetKeyValueBool( KEY_TICK_PENTAS );
 		}
-		else if( KeyIs( KEY_TICK_FLASH_SMOKE_KILLS ) )
+		else if ( KeyIs( KEY_TICK_FLASH_SMOKE_KILLS ) )
 		{
 			SetKeyValueBool( KEY_TICK_FLASH_SMOKE_KILLS );
 		}
-		else if( KeyIs( KEY_TICK_JUMPSHOTS ) )
+		else if ( KeyIs( KEY_TICK_JUMPSHOTS ) )
 		{
 			SetKeyValueBool( KEY_TICK_JUMPSHOTS );
 		}
-		else if( KeyIs( KEY_TICK_NOSCOPES ) )
+		else if ( KeyIs( KEY_TICK_NOSCOPES ) )
 		{
 			SetKeyValueBool( KEY_TICK_NOSCOPES );
 		}
-		else if( KeyIs( KEY_TICK_FLICKSHOTS ) )
+		else if ( KeyIs( KEY_TICK_FLICKSHOTS ) )
 		{
 			SetKeyValueBool( KEY_TICK_FLICKSHOTS );
 		}
-		else if( KeyIs( KEY_TICK_WALLBANGS ) )
+		else if ( KeyIs( KEY_TICK_WALLBANGS ) )
 		{
 			SetKeyValueBool( KEY_TICK_WALLBANGS );
 		}
-		else if( KeyIs( KEY_WALLBANG_HEADSHOT_ONLY ) )
+		else if ( KeyIs( KEY_WALLBANG_HEADSHOT_ONLY ) )
 		{
 			SetKeyValueBool( KEY_WALLBANG_HEADSHOT_ONLY );
 		}
-		else if( KeyIs( KEY_WALLBANG_REQUIRE_TWO ) )
+		else if ( KeyIs( KEY_WALLBANG_REQUIRE_TWO ) )
 		{
 			SetKeyValueBool( KEY_WALLBANG_REQUIRE_TWO );
 		}
-		else if( KeyIs( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) )
+		else if ( KeyIs( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) )
 		{
 			SetKeyValueFloat( KEY_WALLBANG_ANOTHER_WB_MAX_DT );
 		}
-		else if( KeyIs( KEY_TICK_FRAGS_VS_BOTS ) )
+		else if ( KeyIs( KEY_TICK_FRAGS_VS_BOTS ) )
 		{
 			SetKeyValueBool( KEY_TICK_FRAGS_VS_BOTS );
 		}
-		else if( KeyIs( KEY_TICK_FRAGS_BY_BOTS ) )
+		else if ( KeyIs( KEY_TICK_FRAGS_BY_BOTS ) )
 		{
 			SetKeyValueBool( KEY_TICK_FRAGS_BY_BOTS );
 		}
-		else if( KeyIs( KEY_5K_MAX_TIME ) )
+		else if ( KeyIs( KEY_5K_MAX_TIME ) )
 		{
 			SetKeyValueFloat( KEY_5K_MAX_TIME );
 		}
-		else if( KeyIs( KEY_4K_MAX_TIME ) )
+		else if ( KeyIs( KEY_4K_MAX_TIME ) )
 		{
 			SetKeyValueFloat( KEY_4K_MAX_TIME );
 		}
-		else if( KeyIs( KEY_3K_MAX_TIME ) )
+		else if ( KeyIs( KEY_3K_MAX_TIME ) )
 		{
 			SetKeyValueFloat( KEY_3K_MAX_TIME );
 		}
-		else if( KeyIs( KEY_TICK_SLOW_STATIONARY_5KS ) )
+		else if ( KeyIs( KEY_TICK_SLOW_STATIONARY_5KS ) )
 		{
 			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_5KS );
 		}
-		else if( KeyIs( KEY_TICK_SLOW_STATIONARY_4KS ) )
+		else if ( KeyIs( KEY_TICK_SLOW_STATIONARY_4KS ) )
 		{
 			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_4KS );
 		}
-		else if( KeyIs( KEY_TICK_SLOW_STATIONARY_3KS ) )
+		else if ( KeyIs( KEY_TICK_SLOW_STATIONARY_3KS ) )
 		{
 			SetKeyValueBool( KEY_TICK_SLOW_STATIONARY_3KS );
 		}
-		else if( KeyIs( KEY_SLOW_5K_MAX_RANGE ) )
+		else if ( KeyIs( KEY_SLOW_5K_MAX_RANGE ) )
 		{
 			SetKeyValueFloat( KEY_SLOW_5K_MAX_RANGE );
 		}
-		else if( KeyIs( KEY_SLOW_4K_MAX_RANGE ) )
+		else if ( KeyIs( KEY_SLOW_4K_MAX_RANGE ) )
 		{
 			SetKeyValueFloat( KEY_SLOW_4K_MAX_RANGE );
 		}
-		else if( KeyIs( KEY_SLOW_3K_MAX_RANGE ) )
+		else if ( KeyIs( KEY_SLOW_3K_MAX_RANGE ) )
 		{
 			SetKeyValueFloat( KEY_SLOW_3K_MAX_RANGE );
 		}
-		else if( KeyIs( KEY_5K_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_5K_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_5K_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_4K_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_4K_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_4K_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_3K_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_3K_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_3K_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_5K_MUST_INCLUDE_SP_KILL ) )
+		else if ( KeyIs( KEY_5K_MUST_INCLUDE_SP_KILL ) )
 		{
 			SetKeyValueBool( KEY_5K_MUST_INCLUDE_SP_KILL );
 		}
-		else if( KeyIs( KEY_4K_MUST_INCLUDE_SP_KILL ) )
+		else if ( KeyIs( KEY_4K_MUST_INCLUDE_SP_KILL ) )
 		{
 			SetKeyValueBool( KEY_4K_MUST_INCLUDE_SP_KILL );
 		}
-		else if( KeyIs( KEY_3K_MUST_INCLUDE_SP_KILL ) )
+		else if ( KeyIs( KEY_3K_MUST_INCLUDE_SP_KILL ) )
 		{
 			SetKeyValueBool( KEY_3K_MUST_INCLUDE_SP_KILL );
 		}
-		else if( KeyIs( KEY_5K_SP_KILL_EXTRA_MAX_TIME ) )
+		else if ( KeyIs( KEY_5K_SP_KILL_EXTRA_MAX_TIME ) )
 		{
 			SetKeyValueFloat( KEY_5K_SP_KILL_EXTRA_MAX_TIME );
 		}
-		else if( KeyIs( KEY_4K_SP_KILL_EXTRA_MAX_TIME ) )
+		else if ( KeyIs( KEY_4K_SP_KILL_EXTRA_MAX_TIME ) )
 		{
 			SetKeyValueFloat( KEY_4K_SP_KILL_EXTRA_MAX_TIME );
 		}
-		else if( KeyIs( KEY_3K_SP_KILL_EXTRA_MAX_TIME ) )
+		else if ( KeyIs( KEY_3K_SP_KILL_EXTRA_MAX_TIME ) )
 		{
 			SetKeyValueFloat( KEY_3K_SP_KILL_EXTRA_MAX_TIME );
 		}
-		else if( KeyIs( KEY_DOUBLE_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_DOUBLE_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_DOUBLE_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_TRIPLE_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_TRIPLE_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_TRIPLE_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_QUADRO_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_QUADRO_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_QUADRO_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_PENTA_MIN_HEADSHOTS ) )
+		else if ( KeyIs( KEY_PENTA_MIN_HEADSHOTS ) )
 		{
 			SetKeyValueInt( KEY_PENTA_MIN_HEADSHOTS );
 		}
-		else if( KeyIs( KEY_SP_DOUBLE_IGNORES_MIN_HS ) )
+		else if ( KeyIs( KEY_SP_DOUBLE_IGNORES_MIN_HS ) )
 		{
 			SetKeyValueBool( KEY_SP_DOUBLE_IGNORES_MIN_HS );
 		}
-		else if( KeyIs( KEY_SP_TRIPLE_IGNORES_MIN_HS ) )
+		else if ( KeyIs( KEY_SP_TRIPLE_IGNORES_MIN_HS ) )
 		{
 			SetKeyValueBool( KEY_SP_TRIPLE_IGNORES_MIN_HS );
 		}
-		else if( KeyIs( KEY_SP_QUADRO_IGNORES_MIN_HS ) )
+		else if ( KeyIs( KEY_SP_QUADRO_IGNORES_MIN_HS ) )
 		{
 			SetKeyValueBool( KEY_SP_QUADRO_IGNORES_MIN_HS );
 		}
-		else if( KeyIs( KEY_SP_PENTA_IGNORES_MIN_HS ) )
+		else if ( KeyIs( KEY_SP_PENTA_IGNORES_MIN_HS ) )
 		{
 			SetKeyValueBool( KEY_SP_PENTA_IGNORES_MIN_HS );
 		}
-		else if( KeyIs( KEY_NOSCOPE_MIN_DISTANCE ) )
+		else if ( KeyIs( KEY_NOSCOPE_MIN_DISTANCE ) )
 		{
 			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE );
 		}
-		else if( KeyIs( KEY_NOSCOPE_MIN_DISTANCE_HS_MOD ) )
+		else if ( KeyIs( KEY_NOSCOPE_MIN_DISTANCE_HS_MOD ) )
 		{
 			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_HS_MOD );
 		}
-		else if( KeyIs( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD ) )
+		else if ( KeyIs( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD ) )
 		{
 			SetKeyValueFloat( KEY_NOSCOPE_MIN_DISTANCE_WB_MOD );
 		}
-		else if( KeyIs( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME ) )
+		else if ( KeyIs( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME ) )
 		{
 			SetKeyValueFloat( KEY_JUMPSHOT_MIN_POSTKILL_AIR_TIME );
 		}
-		else if( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE ) )
+		else if ( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE ) )
 		{
 			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE );
 		}
-		else if( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD ) )
+		else if ( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD ) )
 		{
 			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD );
 		}
-		else if( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD ) )
+		else if ( KeyIs( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD ) )
 		{
 			SetKeyValueFloat( KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD );
 		}
-		else if( KeyIs( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) )
+		else if ( KeyIs( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) )
 		{
 			SetKeyValueBool( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE );
 		}
-		else if( KeyIs( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) )
+		else if ( KeyIs( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) )
 		{
 			SetKeyValueFloat( KEY_JUMPSHOT_MULTIPLE_MAX_DT );
 		}
-		else if( KeyIs( KEY_FLICKSHOT_MAX_DURATION ) )
+		else if ( KeyIs( KEY_FLICKSHOT_MAX_DURATION ) )
 		{
 			SetKeyValueInt( KEY_FLICKSHOT_MAX_DURATION );
 		}
-		else if( KeyIs( KEY_FLICKSHOT_HEADSHOT_ONLY ) )
+		else if ( KeyIs( KEY_FLICKSHOT_HEADSHOT_ONLY ) )
 		{
 			SetKeyValueBool( KEY_FLICKSHOT_HEADSHOT_ONLY );
 		}
-		else if( KeyIs( KEY_FLICKSHOT_MIN_DISTANCE ) )
+		else if ( KeyIs( KEY_FLICKSHOT_MIN_DISTANCE ) )
 		{
 			SetKeyValueFloat( KEY_FLICKSHOT_MIN_DISTANCE );
 		}
-		else if( KeyIs( KEY_FLICKSHOT_MIN_ANGLE_MOD ) )
+		else if ( KeyIs( KEY_FLICKSHOT_MIN_ANGLE_MOD ) )
 		{
 			SetKeyValueFloat( KEY_FLICKSHOT_MIN_ANGLE_MOD );
 		}
@@ -717,7 +724,7 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 
 	file.close();
 
-	if( !vdm_dir_is_valid && ShouldWriteVDM() )
+	if ( !vdm_dir_is_valid && (ShouldWriteVDM() || g_VDMsToChain.size() > 0) )
 	{
 		printf( "Error: VDM directory contains a forbidden character \"%c\" - process has been aborted!\n", vdm_dir_invalid_char );
 		return false;
@@ -727,19 +734,19 @@ bool SettingsManager::LoadSettings( const char *szSettingsFile, bool bBatchDirSu
 	// and cap the maximum duration to avoid growing the view angle lists too much
 	const int iFlickshotAbsoluteMaxDuration = 300;
 
-	for( auto &[category, fields] : m_weaponSettings )
+	for ( auto &[category, fields] : m_weaponSettings )
 	{
-		if( fields.find( KEY_FLICKSHOT_MAX_DURATION ) != fields.end() )
+		if ( fields.find( KEY_FLICKSHOT_MAX_DURATION ) != fields.end() )
 		{
 			int duration = fields[ KEY_FLICKSHOT_MAX_DURATION ].m_int;
 
-			if( duration > iFlickshotAbsoluteMaxDuration )
+			if ( duration > iFlickshotAbsoluteMaxDuration )
 			{
 				duration = iFlickshotAbsoluteMaxDuration;
 				fields[ KEY_FLICKSHOT_MAX_DURATION ].m_int = duration;
 			}
 
-			if( duration > m_iMaxFlickDuration )
+			if ( duration > m_iMaxFlickDuration )
 				m_iMaxFlickDuration = duration;
 		}
 	}
@@ -761,7 +768,7 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	WeaponSettingsField &category_settings = m_weaponSettings[ weaponCategory ];
 	WeaponSettingsField &general_settings = GetGeneralSettings();
 
-	if( weaponID != WEAPON_NONE && m_weaponSettings.find( weaponID ) != m_weaponSettings.end() )
+	if ( weaponID != WEAPON_NONE && m_weaponSettings.find( weaponID ) != m_weaponSettings.end() )
 	{
 		weapon_settings = &m_weaponSettings[ weaponID ];
 	}
@@ -780,39 +787,39 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		require_sp_kill_key,
 		sp_kill_extra_time_key;
 
-	switch( type )
+	switch ( type )
 	{
 		case FRAG_5K:
 		{
-			tick_key =					KEY_TICK_5KS;
-			tick_stationary_key =		KEY_TICK_SLOW_STATIONARY_5KS;
-			stationary_max_range_key =	KEY_SLOW_5K_MAX_RANGE;
-			max_time_key =				KEY_5K_MAX_TIME;
-			min_hs_key =				KEY_5K_MIN_HEADSHOTS;
-			require_sp_kill_key =		KEY_5K_MUST_INCLUDE_SP_KILL;
-			sp_kill_extra_time_key =	KEY_5K_SP_KILL_EXTRA_MAX_TIME;
+			tick_key = KEY_TICK_5KS;
+			tick_stationary_key = KEY_TICK_SLOW_STATIONARY_5KS;
+			stationary_max_range_key = KEY_SLOW_5K_MAX_RANGE;
+			max_time_key = KEY_5K_MAX_TIME;
+			min_hs_key = KEY_5K_MIN_HEADSHOTS;
+			require_sp_kill_key = KEY_5K_MUST_INCLUDE_SP_KILL;
+			sp_kill_extra_time_key = KEY_5K_SP_KILL_EXTRA_MAX_TIME;
 		}
 		break;
 		case FRAG_4K:
 		{
-			tick_key =					KEY_TICK_4KS;
-			tick_stationary_key =		KEY_TICK_SLOW_STATIONARY_4KS;
-			stationary_max_range_key =	KEY_SLOW_4K_MAX_RANGE;
-			max_time_key =				KEY_4K_MAX_TIME;
-			min_hs_key =				KEY_4K_MIN_HEADSHOTS;
-			require_sp_kill_key =		KEY_4K_MUST_INCLUDE_SP_KILL;
-			sp_kill_extra_time_key =	KEY_4K_SP_KILL_EXTRA_MAX_TIME;
+			tick_key = KEY_TICK_4KS;
+			tick_stationary_key = KEY_TICK_SLOW_STATIONARY_4KS;
+			stationary_max_range_key = KEY_SLOW_4K_MAX_RANGE;
+			max_time_key = KEY_4K_MAX_TIME;
+			min_hs_key = KEY_4K_MIN_HEADSHOTS;
+			require_sp_kill_key = KEY_4K_MUST_INCLUDE_SP_KILL;
+			sp_kill_extra_time_key = KEY_4K_SP_KILL_EXTRA_MAX_TIME;
 		}
 		break;
 		case FRAG_3K:
 		{
-			tick_key =					KEY_TICK_3KS;
-			tick_stationary_key =		KEY_TICK_SLOW_STATIONARY_3KS;
-			stationary_max_range_key =	KEY_SLOW_3K_MAX_RANGE;
-			max_time_key =				KEY_3K_MAX_TIME;
-			min_hs_key =				KEY_3K_MIN_HEADSHOTS;
-			require_sp_kill_key =		KEY_3K_MUST_INCLUDE_SP_KILL;
-			sp_kill_extra_time_key =	KEY_3K_SP_KILL_EXTRA_MAX_TIME;
+			tick_key = KEY_TICK_3KS;
+			tick_stationary_key = KEY_TICK_SLOW_STATIONARY_3KS;
+			stationary_max_range_key = KEY_SLOW_3K_MAX_RANGE;
+			max_time_key = KEY_3K_MAX_TIME;
+			min_hs_key = KEY_3K_MIN_HEADSHOTS;
+			require_sp_kill_key = KEY_3K_MUST_INCLUDE_SP_KILL;
+			sp_kill_extra_time_key = KEY_3K_SP_KILL_EXTRA_MAX_TIME;
 		}
 		break;
 		default:
@@ -823,19 +830,19 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	// ===== Check the settings =========================================
 
 	// Tick key
-	if( weapon_settings && weapon_settings->find( tick_key ) != weapon_settings->end() )
+	if ( weapon_settings && weapon_settings->find( tick_key ) != weapon_settings->end() )
 	{
-		if( !(*weapon_settings)[ tick_key ].m_bool )
+		if ( !( *weapon_settings )[ tick_key ].m_bool )
 			return false;
 	}
-	else if( category_settings.find( tick_key ) != category_settings.end() )
+	else if ( category_settings.find( tick_key ) != category_settings.end() )
 	{
-		if( !category_settings[ tick_key ].m_bool )
+		if ( !category_settings[ tick_key ].m_bool )
 			return false;
 	}
 	else
 	{
-		if( !general_settings[ tick_key ].m_bool )
+		if ( !general_settings[ tick_key ].m_bool )
 			return false;
 	}
 
@@ -843,11 +850,11 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	bool bTickStationary = false;
 	bool bIsStationary = false;
 
-	if( weapon_settings && weapon_settings->find( tick_stationary_key ) != weapon_settings->end() )
+	if ( weapon_settings && weapon_settings->find( tick_stationary_key ) != weapon_settings->end() )
 	{
-		bTickStationary = (*weapon_settings)[ tick_stationary_key ].m_bool;
+		bTickStationary = ( *weapon_settings )[ tick_stationary_key ].m_bool;
 	}
-	else if( category_settings.find( tick_stationary_key ) != category_settings.end() )
+	else if ( category_settings.find( tick_stationary_key ) != category_settings.end() )
 	{
 		bTickStationary = category_settings[ tick_stationary_key ].m_bool;
 	}
@@ -856,21 +863,21 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		bTickStationary = general_settings[ tick_stationary_key ].m_bool;
 	}
 
-	if( bTickStationary )
+	if ( bTickStationary )
 	{
-		if( weapon_settings && weapon_settings->find( stationary_max_range_key ) != weapon_settings->end() )
+		if ( weapon_settings && weapon_settings->find( stationary_max_range_key ) != weapon_settings->end() )
 		{
-			if( (*weapon_settings)[ stationary_max_range_key ].m_float >= farthest_distance )
+			if ( ( *weapon_settings )[ stationary_max_range_key ].m_float >= farthest_distance )
 				bIsStationary = true;
 		}
-		else if( category_settings.find( stationary_max_range_key ) != category_settings.end() )
+		else if ( category_settings.find( stationary_max_range_key ) != category_settings.end() )
 		{
-			if( category_settings[ stationary_max_range_key ].m_float >= farthest_distance )
+			if ( category_settings[ stationary_max_range_key ].m_float >= farthest_distance )
 				bIsStationary = true;
 		}
 		else
 		{
-			if( general_settings[ stationary_max_range_key ].m_float >= farthest_distance )
+			if ( general_settings[ stationary_max_range_key ].m_float >= farthest_distance )
 				bIsStationary = true;
 		}
 	}
@@ -878,11 +885,11 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	// Max time key
 	float fMaxTime = 0.f;
 
-	if( weapon_settings && weapon_settings->find( max_time_key ) != weapon_settings->end() )
+	if ( weapon_settings && weapon_settings->find( max_time_key ) != weapon_settings->end() )
 	{
-		fMaxTime = (*weapon_settings)[ max_time_key ].m_float;
+		fMaxTime = ( *weapon_settings )[ max_time_key ].m_float;
 	}
-	else if( category_settings.find( max_time_key ) != category_settings.end() )
+	else if ( category_settings.find( max_time_key ) != category_settings.end() )
 	{
 		fMaxTime = category_settings[ max_time_key ].m_float;
 	}
@@ -892,13 +899,13 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	}
 
 	// Extra max time key
-	if( num_special_kills > 0 && fMaxTime >= 0.f )
+	if ( num_special_kills > 0 && fMaxTime >= 0.f )
 	{
-		if( weapon_settings && weapon_settings->find( sp_kill_extra_time_key ) != weapon_settings->end() )
+		if ( weapon_settings && weapon_settings->find( sp_kill_extra_time_key ) != weapon_settings->end() )
 		{
-			fMaxTime += (*weapon_settings)[ sp_kill_extra_time_key ].m_float * num_special_kills;
+			fMaxTime += ( *weapon_settings )[ sp_kill_extra_time_key ].m_float * num_special_kills;
 		}
-		else if( category_settings.find( sp_kill_extra_time_key ) != category_settings.end() )
+		else if ( category_settings.find( sp_kill_extra_time_key ) != category_settings.end() )
 		{
 			fMaxTime += category_settings[ sp_kill_extra_time_key ].m_float * num_special_kills;
 		}
@@ -908,9 +915,9 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 		}
 	}
 
-	if( fMaxTime >= 0.f && frag_time > fMaxTime )
+	if ( fMaxTime >= 0.f && frag_time > fMaxTime )
 	{
-		if( !bTickStationary || !bIsStationary )
+		if ( !bTickStationary || !bIsStationary )
 			return false;
 	}
 	else
@@ -920,39 +927,39 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 	}
 
 	// Min headshots and special kills check
-	if( weaponCategory != CATEGORY_KNIFE && weaponCategory != CATEGORY_GRENADE )
+	if ( weaponCategory != CATEGORY_KNIFE && weaponCategory != CATEGORY_GRENADE )
 	{
-		if( weapon_settings && weapon_settings->find( min_hs_key ) != weapon_settings->end() )
+		if ( weapon_settings && weapon_settings->find( min_hs_key ) != weapon_settings->end() )
 		{
-			if( headshots < (*weapon_settings)[ min_hs_key ].m_int )
+			if ( headshots < ( *weapon_settings )[ min_hs_key ].m_int )
 				return false;
 		}
-		else if( category_settings.find( min_hs_key ) != category_settings.end() )
+		else if ( category_settings.find( min_hs_key ) != category_settings.end() )
 		{
-			if( headshots < category_settings[ min_hs_key ].m_int )
+			if ( headshots < category_settings[ min_hs_key ].m_int )
 				return false;
 		}
 		else
 		{
-			if( headshots < general_settings[ min_hs_key ].m_int )
+			if ( headshots < general_settings[ min_hs_key ].m_int )
 				return false;
 		}
 
-		if( num_special_kills == 0 )
+		if ( num_special_kills == 0 )
 		{
-			if( weapon_settings && weapon_settings->find( require_sp_kill_key ) != weapon_settings->end() )
+			if ( weapon_settings && weapon_settings->find( require_sp_kill_key ) != weapon_settings->end() )
 			{
-				if( (*weapon_settings)[ require_sp_kill_key ].m_bool )
+				if ( ( *weapon_settings )[ require_sp_kill_key ].m_bool )
 					return false;
 			}
-			else if( category_settings.find( require_sp_kill_key ) != category_settings.end() )
+			else if ( category_settings.find( require_sp_kill_key ) != category_settings.end() )
 			{
-				if( category_settings[ require_sp_kill_key ].m_bool )
+				if ( category_settings[ require_sp_kill_key ].m_bool )
 					return false;
 			}
 			else
 			{
-				if( general_settings[ require_sp_kill_key ].m_bool )
+				if ( general_settings[ require_sp_kill_key ].m_bool )
 					return false;
 			}
 		}
@@ -967,19 +974,19 @@ bool SettingsManager::ShouldTickFrag( MultiKillFragType type, CSWeaponID *pWeapo
 
 bool SettingsManager::ShouldTickFrag( Key tick_key )
 {
-	if( m_fcats.weapon_settings && m_fcats.weapon_settings->find( tick_key ) != m_fcats.weapon_settings->end() )
+	if ( m_fcats.weapon_settings && m_fcats.weapon_settings->find( tick_key ) != m_fcats.weapon_settings->end() )
 	{
-		if( (*m_fcats.weapon_settings)[ tick_key ].m_bool )
+		if ( ( *m_fcats.weapon_settings )[ tick_key ].m_bool )
 			return true;
 	}
-	else if( m_fcats.category_settings->find( tick_key ) != m_fcats.category_settings->end() )
+	else if ( m_fcats.category_settings->find( tick_key ) != m_fcats.category_settings->end() )
 	{
-		if( (*m_fcats.category_settings)[ tick_key ].m_bool )
+		if ( ( *m_fcats.category_settings )[ tick_key ].m_bool )
 			return true;
 	}
 	else
 	{
-		if( GetGeneralSettings()[ tick_key ].m_bool )
+		if ( GetGeneralSettings()[ tick_key ].m_bool )
 			return true;
 	}
 
@@ -992,21 +999,21 @@ bool SettingsManager::ShouldTickFrag( Key tick_key, Key only_hs_key, bool bIsHea
 {
 	bool bShouldTick = ShouldTickFrag( tick_key );
 
-	if( bShouldTick && !bIsHeadshot )
+	if ( bShouldTick && !bIsHeadshot )
 	{
-		if( m_fcats.weapon_settings && m_fcats.weapon_settings->find( only_hs_key ) != m_fcats.weapon_settings->end() )
+		if ( m_fcats.weapon_settings && m_fcats.weapon_settings->find( only_hs_key ) != m_fcats.weapon_settings->end() )
 		{
-			if( (*m_fcats.weapon_settings)[ only_hs_key ].m_bool )
+			if ( ( *m_fcats.weapon_settings )[ only_hs_key ].m_bool )
 				bShouldTick = false;
 		}
-		else if( m_fcats.category_settings->find( only_hs_key ) != m_fcats.category_settings->end() )
+		else if ( m_fcats.category_settings->find( only_hs_key ) != m_fcats.category_settings->end() )
 		{
-			if( (*m_fcats.category_settings)[ only_hs_key ].m_bool )
+			if ( ( *m_fcats.category_settings )[ only_hs_key ].m_bool )
 				bShouldTick = false;
 		}
 		else
 		{
-			if( GetGeneralSettings()[ only_hs_key ].m_bool )
+			if ( GetGeneralSettings()[ only_hs_key ].m_bool )
 				bShouldTick = false;
 		}
 	}
@@ -1020,37 +1027,37 @@ bool SettingsManager::ShouldTickFrag( Key tick_key, Key min_dist_key, Key min_di
 {
 	bool bShouldTick = ShouldTickFrag( tick_key );
 
-	if( bShouldTick )
+	if ( bShouldTick )
 	{
 		float fMinDist;
 		float fHsMod;
 		float fWbMod;
 
 		WeaponSettingsField &general_settings = GetGeneralSettings();
-		bool findW = m_fcats.weapon_settings != nullptr;
+		const bool findW = m_fcats.weapon_settings != nullptr;
 
-		if( findW && m_fcats.weapon_settings->find( min_dist_key ) != m_fcats.weapon_settings->end() )
+		if ( findW && m_fcats.weapon_settings->find( min_dist_key ) != m_fcats.weapon_settings->end() )
 		{
-			fMinDist = (*m_fcats.weapon_settings)[ min_dist_key ].m_float;
+			fMinDist = ( *m_fcats.weapon_settings )[ min_dist_key ].m_float;
 		}
-		else if( m_fcats.category_settings->find( min_dist_key ) != m_fcats.category_settings->end() )
+		else if ( m_fcats.category_settings->find( min_dist_key ) != m_fcats.category_settings->end() )
 		{
-			fMinDist = (*m_fcats.category_settings)[ min_dist_key ].m_float;
+			fMinDist = ( *m_fcats.category_settings )[ min_dist_key ].m_float;
 		}
 		else
 		{
 			fMinDist = general_settings[ min_dist_key ].m_float;
 		}
 
-		if( bIsHeadshot )
+		if ( bIsHeadshot )
 		{
-			if( findW && m_fcats.weapon_settings->find( min_dist_hs_mod_key ) != m_fcats.weapon_settings->end() )
+			if ( findW && m_fcats.weapon_settings->find( min_dist_hs_mod_key ) != m_fcats.weapon_settings->end() )
 			{
-				fHsMod = (*m_fcats.weapon_settings)[ min_dist_hs_mod_key ].m_float;
+				fHsMod = ( *m_fcats.weapon_settings )[ min_dist_hs_mod_key ].m_float;
 			}
-			else if( m_fcats.category_settings->find( min_dist_hs_mod_key ) != m_fcats.category_settings->end() )
+			else if ( m_fcats.category_settings->find( min_dist_hs_mod_key ) != m_fcats.category_settings->end() )
 			{
-				fHsMod = (*m_fcats.category_settings)[ min_dist_hs_mod_key ].m_float;
+				fHsMod = ( *m_fcats.category_settings )[ min_dist_hs_mod_key ].m_float;
 			}
 			else
 			{
@@ -1060,15 +1067,15 @@ bool SettingsManager::ShouldTickFrag( Key tick_key, Key min_dist_key, Key min_di
 			fMinDist *= fHsMod;
 		}
 
-		if( bIsWallbang )
+		if ( bIsWallbang )
 		{
-			if( findW && m_fcats.weapon_settings->find( min_dist_wb_mod_key ) != m_fcats.weapon_settings->end() )
+			if ( findW && m_fcats.weapon_settings->find( min_dist_wb_mod_key ) != m_fcats.weapon_settings->end() )
 			{
-				fWbMod = (*m_fcats.weapon_settings)[ min_dist_wb_mod_key ].m_float;
+				fWbMod = ( *m_fcats.weapon_settings )[ min_dist_wb_mod_key ].m_float;
 			}
-			else if( m_fcats.category_settings->find( min_dist_wb_mod_key ) != m_fcats.category_settings->end() )
+			else if ( m_fcats.category_settings->find( min_dist_wb_mod_key ) != m_fcats.category_settings->end() )
 			{
-				fWbMod = (*m_fcats.category_settings)[ min_dist_wb_mod_key ].m_float;
+				fWbMod = ( *m_fcats.category_settings )[ min_dist_wb_mod_key ].m_float;
 			}
 			else
 			{
@@ -1078,7 +1085,7 @@ bool SettingsManager::ShouldTickFrag( Key tick_key, Key min_dist_key, Key min_di
 			fMinDist *= fWbMod;
 		}
 
-		if( fDistance < fMinDist )
+		if ( fDistance < fMinDist )
 			bShouldTick = false;
 	}
 
@@ -1091,42 +1098,42 @@ bool SettingsManager::ShouldTickCollat( CSWeaponCategory category, Key tick_key,
 {
 	bool bShouldTick = ShouldTickFrag( tick_key );
 
-	if( bShouldTick && category != CATEGORY_GRENADE )
+	if ( bShouldTick && category != CATEGORY_GRENADE )
 	{
 		// Check if we can ignore minimum headshots
-		if( bMayIgnoreMinHs )
+		if ( bMayIgnoreMinHs )
 		{
-			if( m_fcats.weapon_settings && m_fcats.weapon_settings->find( ignore_min_hs_key ) != m_fcats.weapon_settings->end() )
+			if ( m_fcats.weapon_settings && m_fcats.weapon_settings->find( ignore_min_hs_key ) != m_fcats.weapon_settings->end() )
 			{
-				if( (*m_fcats.weapon_settings)[ ignore_min_hs_key ].m_bool )
+				if ( ( *m_fcats.weapon_settings )[ ignore_min_hs_key ].m_bool )
 					return bShouldTick;
 			}
-			else if( m_fcats.category_settings->find( ignore_min_hs_key ) != m_fcats.category_settings->end() )
+			else if ( m_fcats.category_settings->find( ignore_min_hs_key ) != m_fcats.category_settings->end() )
 			{
-				if( (*m_fcats.category_settings)[ ignore_min_hs_key ].m_bool )
+				if ( ( *m_fcats.category_settings )[ ignore_min_hs_key ].m_bool )
 					return bShouldTick;
 			}
 			else
 			{
-				if( GetGeneralSettings()[ ignore_min_hs_key ].m_bool )
+				if ( GetGeneralSettings()[ ignore_min_hs_key ].m_bool )
 					return bShouldTick;
 			}
 		}
 
 		// Minimum headshots check
-		if( m_fcats.weapon_settings && m_fcats.weapon_settings->find( min_hs_key ) != m_fcats.weapon_settings->end() )
+		if ( m_fcats.weapon_settings && m_fcats.weapon_settings->find( min_hs_key ) != m_fcats.weapon_settings->end() )
 		{
-			if( (*m_fcats.weapon_settings)[ min_hs_key ].m_int > headshots )
+			if ( ( *m_fcats.weapon_settings )[ min_hs_key ].m_int > headshots )
 				bShouldTick = false;
 		}
-		else if( m_fcats.category_settings->find( min_hs_key ) != m_fcats.category_settings->end() )
+		else if ( m_fcats.category_settings->find( min_hs_key ) != m_fcats.category_settings->end() )
 		{
-			if( (*m_fcats.category_settings)[ min_hs_key ].m_int > headshots )
+			if ( ( *m_fcats.category_settings )[ min_hs_key ].m_int > headshots )
 				bShouldTick = false;
 		}
 		else
 		{
-			if( GetGeneralSettings()[ min_hs_key ].m_int > headshots )
+			if ( GetGeneralSettings()[ min_hs_key ].m_int > headshots )
 				bShouldTick = false;
 		}
 	}
@@ -1138,41 +1145,41 @@ bool SettingsManager::ShouldTickCollat( CSWeaponCategory category, Key tick_key,
 
 bool SettingsManager::WallbangIsCloseToAnotherWallbang( CSWeaponID weapon, float time_to_closest_wb )
 {
-	bool bWeaponFound = m_weaponSettings.find( weapon ) != m_weaponSettings.end();
+	const bool bWeaponFound = m_weaponSettings.find( weapon ) != m_weaponSettings.end();
 
 	CSWeaponCategory category = GetWeaponCategory( weapon );
 	WeaponSettingsField &category_settings = m_weaponSettings[ category ];
 	WeaponSettingsField &general_settings = GetGeneralSettings();
 
 	// Check if we can skip the second kill check and just tick this as a singular wallbang
-	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_REQUIRE_TWO ) != m_weaponSettings[ weapon ].end() )
+	if ( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_REQUIRE_TWO ) != m_weaponSettings[ weapon ].end() )
 	{
-		if( !m_weaponSettings[ weapon ][ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
+		if ( !m_weaponSettings[ weapon ][ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
 			return true;
 	}
-	else if( category_settings.find( KEY_WALLBANG_REQUIRE_TWO ) != category_settings.end() )
+	else if ( category_settings.find( KEY_WALLBANG_REQUIRE_TWO ) != category_settings.end() )
 	{
-		if( !category_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
+		if ( !category_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
 			return true;
 	}
 	else
 	{
-		if( !general_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
+		if ( !general_settings[ KEY_WALLBANG_REQUIRE_TWO ].m_bool )
 			return true;
 	}
 
 	// Another wallbang required - check if there is a suitable one
 
-	if( time_to_closest_wb < 0.f )
+	if ( time_to_closest_wb < 0.f )
 		return false;
 
 	float max_deltatime;
 
-	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) != m_weaponSettings[ weapon ].end() )
+	if ( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) != m_weaponSettings[ weapon ].end() )
 	{
 		max_deltatime = m_weaponSettings[ weapon ][ KEY_WALLBANG_ANOTHER_WB_MAX_DT ].m_float;
 	}
-	else if( category_settings.find( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) != category_settings.end() )
+	else if ( category_settings.find( KEY_WALLBANG_ANOTHER_WB_MAX_DT ) != category_settings.end() )
 	{
 		max_deltatime = category_settings[ KEY_WALLBANG_ANOTHER_WB_MAX_DT ].m_float;
 	}
@@ -1189,29 +1196,29 @@ bool SettingsManager::WallbangIsCloseToAnotherWallbang( CSWeaponID weapon, float
 bool SettingsManager::JumpshotIsCloseToAnotherJumpshot( CSWeaponID weapon, float time_to_closest_js )
 {
 	// Is there another jumpshot at all?
-	if( time_to_closest_js < 0.f )
+	if ( time_to_closest_js < 0.f )
 		return false;
 
-	bool bWeaponFound = m_weaponSettings.find( weapon ) != m_weaponSettings.end();
+	const bool bWeaponFound = m_weaponSettings.find( weapon ) != m_weaponSettings.end();
 
 	CSWeaponCategory category = GetWeaponCategory( weapon );
 	WeaponSettingsField &category_settings = m_weaponSettings[ category ];
 	WeaponSettingsField &general_settings = GetGeneralSettings();
 
 	// Check if multiple jumpshots are supposed to be ticked
-	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) != m_weaponSettings[ weapon ].end() )
+	if ( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) != m_weaponSettings[ weapon ].end() )
 	{
-		if( !m_weaponSettings[ weapon ][ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
+		if ( !m_weaponSettings[ weapon ][ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
 			return false;
 	}
-	else if( category_settings.find( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) != category_settings.end() )
+	else if ( category_settings.find( KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ) != category_settings.end() )
 	{
-		if( !category_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
+		if ( !category_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
 			return false;
 	}
 	else
 	{
-		if( !general_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
+		if ( !general_settings[ KEY_JUMPSHOT_ALWAYS_TICK_MULTIPLE ].m_bool )
 			return false;
 	}
 
@@ -1219,11 +1226,11 @@ bool SettingsManager::JumpshotIsCloseToAnotherJumpshot( CSWeaponID weapon, float
 
 	float max_deltatime;
 
-	if( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) != m_weaponSettings[ weapon ].end() )
+	if ( bWeaponFound && m_weaponSettings[ weapon ].find( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) != m_weaponSettings[ weapon ].end() )
 	{
 		max_deltatime = m_weaponSettings[ weapon ][ KEY_JUMPSHOT_MULTIPLE_MAX_DT ].m_float;
 	}
-	else if( category_settings.find( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) != category_settings.end() )
+	else if ( category_settings.find( KEY_JUMPSHOT_MULTIPLE_MAX_DT ) != category_settings.end() )
 	{
 		max_deltatime = category_settings[ KEY_JUMPSHOT_MULTIPLE_MAX_DT ].m_float;
 	}
@@ -1244,75 +1251,75 @@ bool SettingsManager::ShouldTickFrag( unsigned short type_flags, CSWeaponID weap
 	m_fcats.weapon_settings = nullptr;
 	m_fcats.category_settings = &m_weaponSettings[ weaponCategory ];
 
-	if( m_weaponSettings.find( weapon ) != m_weaponSettings.end() )
+	if ( m_weaponSettings.find( weapon ) != m_weaponSettings.end() )
 	{
 		m_fcats.weapon_settings = &m_weaponSettings[ weapon ];
 	}
 
 	bool bHeadshot = headshots > 0;
-	bool bWallbang = (type_flags & FL_KILL_WALLBANG) != 0;
-	bool bHasSpecialFlags = (type_flags & ~MASK_COLLATS) != 0;
+	bool bWallbang = ( type_flags & FL_KILL_WALLBANG ) != 0;
+	bool bHasSpecialFlags = ( type_flags & ~MASK_COLLATS ) != 0;
 
-	if( type_flags & FL_KILL_DOUBLE )
+	if ( type_flags & FL_KILL_DOUBLE )
 	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_DOUBLES, KEY_DOUBLE_MIN_HEADSHOTS, headshots, KEY_SP_DOUBLE_IGNORES_MIN_HS, bHasSpecialFlags ) )
-			return true;
-	}
-	
-	if( type_flags & FL_KILL_TRIPLE )
-	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_TRIPLES, KEY_TRIPLE_MIN_HEADSHOTS, headshots, KEY_SP_TRIPLE_IGNORES_MIN_HS, bHasSpecialFlags ) )
-			return true;
-	}
-	
-	if( type_flags & FL_KILL_QUADRO )
-	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_QUADROS, KEY_QUADRO_MIN_HEADSHOTS, headshots, KEY_SP_QUADRO_IGNORES_MIN_HS, bHasSpecialFlags ) )
-			return true;
-	}
-	
-	if( type_flags & FL_KILL_PENTA )
-	{
-		if( ShouldTickCollat( weaponCategory, KEY_TICK_PENTAS, KEY_PENTA_MIN_HEADSHOTS, headshots, KEY_SP_PENTA_IGNORES_MIN_HS, bHasSpecialFlags ) )
+		if ( ShouldTickCollat( weaponCategory, KEY_TICK_DOUBLES, KEY_DOUBLE_MIN_HEADSHOTS, headshots, KEY_SP_DOUBLE_IGNORES_MIN_HS, bHasSpecialFlags ) )
 			return true;
 	}
 
-	if( type_flags & FL_KILL_FLASHKILL || type_flags & FL_KILL_SMOKEKILL )
+	if ( type_flags & FL_KILL_TRIPLE )
 	{
-		if( ShouldTickFrag( KEY_TICK_FLASH_SMOKE_KILLS ) )
+		if ( ShouldTickCollat( weaponCategory, KEY_TICK_TRIPLES, KEY_TRIPLE_MIN_HEADSHOTS, headshots, KEY_SP_TRIPLE_IGNORES_MIN_HS, bHasSpecialFlags ) )
 			return true;
 	}
 
-	if( type_flags & FL_KILL_FLICKSHOT )
+	if ( type_flags & FL_KILL_QUADRO )
 	{
-		if( distance >= GetFlickshotMinDistanceForWeapon( weapon ) )
+		if ( ShouldTickCollat( weaponCategory, KEY_TICK_QUADROS, KEY_QUADRO_MIN_HEADSHOTS, headshots, KEY_SP_QUADRO_IGNORES_MIN_HS, bHasSpecialFlags ) )
+			return true;
+	}
+
+	if ( type_flags & FL_KILL_PENTA )
+	{
+		if ( ShouldTickCollat( weaponCategory, KEY_TICK_PENTAS, KEY_PENTA_MIN_HEADSHOTS, headshots, KEY_SP_PENTA_IGNORES_MIN_HS, bHasSpecialFlags ) )
+			return true;
+	}
+
+	if ( type_flags & FL_KILL_FLASHKILL || type_flags & FL_KILL_SMOKEKILL )
+	{
+		if ( ShouldTickFrag( KEY_TICK_FLASH_SMOKE_KILLS ) )
+			return true;
+	}
+
+	if ( type_flags & FL_KILL_FLICKSHOT )
+	{
+		if ( distance >= GetFlickshotMinDistanceForWeapon( weapon ) )
 		{
-			if( ShouldTickFrag( KEY_TICK_FLICKSHOTS, KEY_FLICKSHOT_HEADSHOT_ONLY, bHeadshot ) )
+			if ( ShouldTickFrag( KEY_TICK_FLICKSHOTS, KEY_FLICKSHOT_HEADSHOT_ONLY, bHeadshot ) )
 				return true;
 		}
 	}
 
-	if( type_flags & FL_KILL_WALLBANG )
+	if ( type_flags & FL_KILL_WALLBANG )
 	{
-		if( ShouldTickFrag( KEY_TICK_WALLBANGS, KEY_WALLBANG_HEADSHOT_ONLY, bHeadshot )
+		if ( ShouldTickFrag( KEY_TICK_WALLBANGS, KEY_WALLBANG_HEADSHOT_ONLY, bHeadshot )
 		&& WallbangIsCloseToAnotherWallbang( weapon, dtimes.time_to_closest_wallbang ) )
 		{
 			return true;
 		}
 	}
 
-	if( (type_flags & FL_KILL_JUMPSHOT) || (type_flags & FL_KILL_LADDERSHOT) )
+	if ( ( type_flags & FL_KILL_JUMPSHOT ) || ( type_flags & FL_KILL_LADDERSHOT ) )
 	{
-		if( ShouldTickFrag( KEY_TICK_JUMPSHOTS, KEY_JUMPSHOT_MIN_DISTANCE, KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD, KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
+		if ( ShouldTickFrag( KEY_TICK_JUMPSHOTS, KEY_JUMPSHOT_MIN_DISTANCE, KEY_JUMPSHOT_MIN_DISTANCE_HS_MOD, KEY_JUMPSHOT_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
 			return true;
 
-		if( JumpshotIsCloseToAnotherJumpshot( weapon, dtimes.time_to_closest_jumpshot ) && ShouldTickFrag( KEY_TICK_JUMPSHOTS ) )
+		if ( JumpshotIsCloseToAnotherJumpshot( weapon, dtimes.time_to_closest_jumpshot ) && ShouldTickFrag( KEY_TICK_JUMPSHOTS ) )
 			return true;
 	}
 
-	if( type_flags & FL_KILL_NOSCOPE )
+	if ( type_flags & FL_KILL_NOSCOPE )
 	{
-		if( ShouldTickFrag( KEY_TICK_NOSCOPES, KEY_NOSCOPE_MIN_DISTANCE, KEY_NOSCOPE_MIN_DISTANCE_HS_MOD, KEY_NOSCOPE_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
+		if ( ShouldTickFrag( KEY_TICK_NOSCOPES, KEY_NOSCOPE_MIN_DISTANCE, KEY_NOSCOPE_MIN_DISTANCE_HS_MOD, KEY_NOSCOPE_MIN_DISTANCE_WB_MOD, distance, bHeadshot, bWallbang ) )
 			return true;
 	}
 
@@ -1351,7 +1358,7 @@ bool SettingsManager::ShouldWriteOutputToDemoDirectory( void )
 
 bool SettingsManager::ShouldWriteVDM( void )
 {
-	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_CREATE_VDM ].m_bool;
+	return m_weaponSettings[ CATEGORY_GENERAL ][ KEY_CREATE_VDM ].m_bool && (BatchProcessingEnabled() || !m_weaponSettings[ CATEGORY_GENERAL ][ KEY_CREATE_VDM_BATCH_ONLY ].m_bool);
 }
 
 // =====================================================================================================================================================================
@@ -1422,38 +1429,38 @@ float SettingsManager::GetMinPostKillAirTimeForWeapon( CSWeaponID weapon )
 SettingsCategory SettingsManager::GetCategoryByName( const char *szCategoryName )
 {
 	// Check if it's a weapon category first
-	if( !_stricmp( szCategoryName, CAT_NAME_GENERAL ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_GENERAL ) )
 		return CATEGORY_GENERAL;
-	if( !_stricmp( szCategoryName, CAT_NAME_KNIFE ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_KNIFE ) )
 		return CATEGORY_KNIFE;
-	if( !_stricmp( szCategoryName, CAT_NAME_PISTOLS ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_PISTOLS ) )
 		return CATEGORY_PISTOL;
-	if( !_stricmp( szCategoryName, CAT_NAME_SHOTGUNS ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_SHOTGUNS ) )
 		return CATEGORY_SHOTGUN;
-	if( !_stricmp( szCategoryName, CAT_NAME_SMGS ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_SMGS ) )
 		return CATEGORY_SMG;
-	if( !_stricmp( szCategoryName, CAT_NAME_RIFLES ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_RIFLES ) )
 		return CATEGORY_RIFLE;
-	if( !_stricmp( szCategoryName, CAT_NAME_SNIPERS ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_SNIPERS ) )
 		return CATEGORY_SNIPER;
-	if( !_stricmp( szCategoryName, CAT_NAME_AUTOSNIPERS ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_AUTOSNIPERS ) )
 		return CATEGORY_AUTOSNIPER;
-	if( !_stricmp( szCategoryName, CAT_NAME_GRENADES ) )
+	if ( !_stricmp( szCategoryName, CAT_NAME_GRENADES ) )
 		return CATEGORY_GRENADE;
 
 	// Check if it's a weapon next
-	CSWeaponID weaponID = AliasToWeaponID( szCategoryName );
+	const CSWeaponID weaponID = AliasToWeaponID( szCategoryName );
 
-	if( weaponID == WEAPON_C4 || weaponID >= WEAPON_WORLD )
+	if ( weaponID == WEAPON_C4 || weaponID >= WEAPON_WORLD )
 		return CATEGORY_INVALID;
 
-	if( weaponID != WEAPON_NONE )
+	if ( weaponID != WEAPON_NONE )
 		return weaponID;
 
 	// Some weapons have different names - check them last
-	if( !_stricmp( szCategoryName, "mp5" ) )
+	if ( !_stricmp( szCategoryName, "mp5" ) )
 		return WEAPON_MP5NAVY;
-	if( !_stricmp( szCategoryName, "elites" )
+	if ( !_stricmp( szCategoryName, "elites" )
 	|| !_stricmp( szCategoryName, "dualies" )
 	|| !_stricmp( szCategoryName, "dual elites" ) )
 		return WEAPON_ELITE;

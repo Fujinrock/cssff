@@ -11,14 +11,14 @@
 enum
 {
 	MAX_USERDATA_BITS = 12,
-	MAX_USERDATA_SIZE = (1 << MAX_USERDATA_BITS)
+	MAX_USERDATA_SIZE = ( 1 << MAX_USERDATA_BITS )
 };
 
 // =====================================================================================================================================================================
 
-void DemoParser::CreateStringTable( const char *name, int max_entries, int user_data_size, int user_data_size_bits, bool user_data_fixed_size )
+const StringTableData_t *DemoParser::CreateStringTable( const char *name, int max_entries, int user_data_size, int user_data_size_bits, bool user_data_fixed_size )
 {
-	if( m_iNumStringTables >= MAX_STRING_TABLES )
+	if ( m_iNumStringTables >= MAX_STRING_TABLES )
 		throw ParsingError_t( "too many string tables" );
 
 	strcpy_s( m_StringTables[ m_iNumStringTables ].szName, name );
@@ -26,60 +26,62 @@ void DemoParser::CreateStringTable( const char *name, int max_entries, int user_
 	m_StringTables[ m_iNumStringTables ].nUserDataSize = user_data_size;
 	m_StringTables[ m_iNumStringTables ].nUserDataSizeBits = user_data_size_bits;
 	m_StringTables[ m_iNumStringTables ].bUserDataFixedSize = user_data_fixed_size;
-	++m_iNumStringTables;
+
+	return &m_StringTables[ m_iNumStringTables++ ];
 }
 
 // =====================================================================================================================================================================
 
-void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_entries, int user_data_size, int user_data_size_bits, bool user_data_fixed_size, bool is_user_info )
+void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, const StringTableData_t *pTable )
 {
 	struct StringHistoryEntry
 	{
 		char string[ ( 1 << SUBSTRING_BITS ) ];
 	};
 
-	int lastEntry = -1;
-	int lastDictionaryIndex = -1;
+	const bool bIsUserInfo = !strcmp( pTable->szName, "userinfo" );
 
 	// Perform integer log2() to set nEntryBits
-	int nTemp = max_entries;
+	int nTemp = pTable->nMaxEntries;
 	int nEntryBits = 0;
-	while (nTemp >>= 1) ++nEntryBits;
+	while ( nTemp >>= 1 ) ++nEntryBits;
 
-	if( ( 1 << nEntryBits ) != max_entries )
+	if ( ( 1 << nEntryBits ) != pTable->nMaxEntries )
 		throw ParsingError_t( "string table size not a power of two" );
 
 	std::vector< StringHistoryEntry > history;
 
-	for( int i = 0; i < entries; i++ )
+	int lastEntry = -1;
+
+	for ( int i = 0; i < entries; i++ )
 	{
 		int entryIndex = lastEntry + 1;
 
-		if( !reader.ReadOneBit() )
+		if ( !reader.ReadOneBit() )
 		{
 			entryIndex = reader.ReadUBitLong( nEntryBits );
 		}
 
 		lastEntry = entryIndex;
 
-		if( entryIndex < 0 || entryIndex >= max_entries )
+		if ( entryIndex < 0 || entryIndex >= pTable->nMaxEntries )
 		{
 			throw ParsingError_t( "bogus string index in ParseStringTableUpdate" );
 		}
 
 		const char *pEntry = nullptr;
-		char entry[ 1024 ]; 
+		char entry[ 1024 ];
 		char substr[ 1024 ];
 		entry[ 0 ] = 0;
 
-		if( reader.ReadOneBit() )
+		if ( reader.ReadOneBit() )
 		{
 			bool substringcheck = reader.ReadOneBit() ? true : false;
 
-			if( substringcheck )
+			if ( substringcheck )
 			{
 				int index = reader.ReadUBitLong( 5 );
-				if( size_t( index ) >= history.size() )
+				if ( size_t( index ) >= history.size() )
 				{
 					throw ParsingError_t( "invalid string history index in ParseStringTableUpdate" );
 				}
@@ -102,22 +104,22 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 		int nBytes = 0;
 
 		// Read in the user data
-		if( reader.ReadOneBit() )
+		if ( reader.ReadOneBit() )
 		{
-			if( user_data_fixed_size )
+			if ( pTable->bUserDataFixedSize )
 			{
 				// Don't need to read length - it's fixed length and the length was networked down already
-				nBytes = user_data_size;
-				if( nBytes <= 0 )
+				nBytes = pTable->nUserDataSize;
+				if ( nBytes <= 0 )
 					throw ParsingError_t( "fixed user data size <= 0 in ParseStringTableUpdate" );
 
 				tempbuf[ nBytes - 1 ] = 0; // Be safe, clear last byte
-				reader.ReadBits( tempbuf, user_data_size_bits );
+				reader.ReadBits( tempbuf, pTable->nUserDataSizeBits );
 			}
 			else
 			{
 				nBytes = reader.ReadUBitLong( MAX_USERDATA_BITS );
-				if( nBytes > sizeof( tempbuf ) )
+				if ( nBytes > sizeof( tempbuf ) )
 				{
 					throw ParsingError_t( "user data too large in ParseStringTableUpdate" );
 				}
@@ -128,26 +130,26 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 			pUserData = tempbuf;
 		}
 
-		if( !pEntry )
+		if ( !pEntry )
 		{
 			pEntry = "";
 		}
 
 		// Add/update players if this is the userinfo string table
-		if( is_user_info && pUserData )
+		if ( bIsUserInfo && pUserData )
 		{
 			Player player( *(const Player *)pUserData );
 			player.entityIndex = entryIndex + 1;
 			player.airstatus = PL_ON_GROUND;
 			player.activity = PL_ACTIVE; // Default to active status in case the demo starts mid-round
-			
-			if( m_bIsPOV && m_iPOVPlayerUserID < 0 )
+
+			if ( m_bIsPOV && m_iPOVPlayerUserID < 0 )
 			{
-				if( !m_bServerInfoEncountered )
+				if ( !m_bServerInfoEncountered )
 					throw ParsingError_t( "SVC_ServerInfo not encountered by user info update" );
 
 				// Find POV player by entry index, which should be the same as the slot in SVC_ServerInfo
-				if( entryIndex == m_iPOVPlayerSlot )
+				if ( entryIndex == m_iPOVPlayerSlot )
 				{
 					m_iPOVPlayerUserID = player.userID;
 				}
@@ -155,14 +157,14 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 
 			Player *existing = FindPlayerByEntityIndex( player.entityIndex );
 
-			if( !existing )
+			if ( !existing )
 			{
 				// New player joined an empty slot
 				m_Players.push_back( player );
 			}
 			else
 			{
-				if( existing->userID != player.userID )
+				if ( existing->userID != player.userID )
 				{
 					// A new player is taking the slot of another player who left earlier
 					m_ExpiredUserIDs.push_back( existing->userID );
@@ -182,7 +184,7 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 			}
 		}
 
-		if( history.size() > 31 )
+		if ( history.size() > 31 )
 		{
 			history.erase( history.begin() );
 		}
@@ -197,7 +199,7 @@ void DemoParser::ParseStringTableUpdate( bf_read &reader, int entries, int max_e
 
 const StringTableData_t *DemoParser::GetStringTableData( uint32 tableID )
 {
-	if( tableID >= m_iNumStringTables )
+	if ( tableID >= m_iNumStringTables )
 		return nullptr;
 
 	return &m_StringTables[ tableID ];

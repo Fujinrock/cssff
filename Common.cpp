@@ -40,7 +40,7 @@ void RemoveFileExtension( std::string &filename )
 {
 	size_t pos = filename.find_last_of( '.' );
 
-	if( pos != std::string::npos )
+	if ( pos != std::string::npos )
 	{
 		filename.erase( pos );
 	}
@@ -49,7 +49,7 @@ void RemoveFileExtension( std::string &filename )
 void RemoveFileNameFolders( std::string &filepath )
 {
 	size_t slash = filepath.find_last_of( "/\\" );
-	if( slash != std::string::npos )
+	if ( slash != std::string::npos )
 		filepath.erase( 0, slash + 1 );
 }
 
@@ -57,9 +57,9 @@ bool FileHasExtension( const std::string &filename, const std::string &extension
 {
 	size_t pos = filename.find_last_of( '.' );
 
-	if( pos != std::string::npos )
+	if ( pos != std::string::npos )
 	{
-		if( filename.substr( pos+1, allowPartial ? extension.length() : std::string::npos ) == extension )
+		if ( filename.substr( pos + 1, allowPartial ? extension.length() : std::string::npos ) == extension )
 			return true;
 	}
 
@@ -70,16 +70,16 @@ bool IsValidDirectory( const char *szPath )
 {
 	DWORD attributes = GetFileAttributesA( szPath );
 
-	return (attributes != INVALID_FILE_ATTRIBUTES) && (attributes & FILE_ATTRIBUTE_DIRECTORY);
+	return ( attributes != INVALID_FILE_ATTRIBUTES ) && ( attributes & FILE_ATTRIBUTE_DIRECTORY );
 }
 
 bool IsValidDirectoryCharacter( char c )
 {
 	// Is it a control character?
-	if( c < 32 )
+	if ( c < 32 )
 		return false;
 
-	switch( c )
+	switch ( c )
 	{
 		// This SHOULD include '\' and '/', but in this program's use case they're allowed
 		case ':':
@@ -93,20 +93,6 @@ bool IsValidDirectoryCharacter( char c )
 	}
 
 	return true;
-}
-
-bool StrHasSpaces( const char *str )
-{
-	if( !str || !str[ 0 ] )
-		return false;
-
-	for( int i = 0; str[ i ]; ++i )
-	{
-		if( std::isspace( str[ i ] ) )
-			return true;
-	}
-
-	return false;
 }
 
 // The parser that is currently parsing a demo
@@ -172,7 +158,7 @@ void QAngle::Init( float _x, float _y, float _z )
 // ===== Vector ==========================================================================================
 
 Vector::Vector()
-	: x(0), y(0), z(0)
+	: x( 0 ), y( 0 ), z( 0 )
 {
 
 }
@@ -208,14 +194,14 @@ float Vector::Length( void ) const
 	return sqrtf( x * x + y * y + z * z );
 }
 
-float& Vector::operator[](int i)
+float &Vector::operator[]( int i )
 {
-	assert( (i >= 0) && (i < 3) );
-	return ((float*)this)[i];
+	assert( ( i >= 0 ) && ( i < 3 ) );
+	return ( (float *)this )[ i ];
 }
 
-float Vector::operator[](int i) const
+float Vector::operator[]( int i ) const
 {
-	assert( (i >= 0) && (i < 3) );
-	return ((float*)this)[i];
+	assert( ( i >= 0 ) && ( i < 3 ) );
+	return ( (float *)this )[ i ];
 }

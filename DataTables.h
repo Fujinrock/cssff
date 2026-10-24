@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <vector>
 #include "Entities.h"
@@ -6,7 +6,7 @@
 class SendTable
 {
 public:
-	char m_tableName[256];
+	char m_tableName[ 256 ];
 	bool m_bNeedsDecoder;
 	int m_nProps;
 	std::vector< SendProp > m_props;

@@ -11,7 +11,7 @@
 GameEvent::GameEvent( int id, const char *name )
 {
 	event_id = id;
-	strncpy_s( event_name, sizeof(event_name), const_cast<char*>(name), sizeof(event_name) );
+	strncpy_s( event_name, sizeof( event_name ), const_cast<char *>( name ), sizeof( event_name ) );
 }
 
 // =====================================================================================================================================================================
@@ -25,7 +25,7 @@ void GameEvent::AddField( const char *name, GameEventValueType type )
 
 const GameEvent::GameEventField &GameEvent::GetField( uint32 index ) const
 {
-	if( index >= event_fields.size() )
+	if ( index >= event_fields.size() )
 		throw ParsingError_t( "invalid game event field index" );
 
 	return event_fields[ index ];
@@ -42,7 +42,7 @@ size_t GameEvent::GetFieldCount( void ) const
 
 GameEvent::GameEventField::GameEventField( const char *name, GameEventValueType type )
 {
-	strncpy_s( field_name, sizeof(field_name), const_cast<char*>(name), sizeof(field_name) );
+	strncpy_s( field_name, sizeof( field_name ), const_cast<char *>( name ), sizeof( field_name ) );
 	field_type = type;
 }
 
@@ -51,7 +51,7 @@ GameEvent::GameEventField::GameEventField( const char *name, GameEventValueType 
 const GameEvent &DemoParser::GetGameEvent( uint32 id )
 {
 	// Event ID should be the same as the event's index in the vector
-	if( !(id < m_GameEvents.size() && m_GameEvents[ id ].event_id == id) )
+	if ( !( id < m_GameEvents.size() && m_GameEvents[ id ].event_id == id ) )
 		throw ParsingError_t( "invalid game event ID" );
 
 	return m_GameEvents[ id ];
@@ -61,20 +61,20 @@ const GameEvent &DemoParser::GetGameEvent( uint32 id )
 
 void DemoParser::ParseGameEvent( bf_read &reader )
 {
-	int eventID = reader.ReadUBitLong( 9 );
+	const int eventID = reader.ReadUBitLong( 9 );
 
 	char name[ 32 ];
-	if( !reader.ReadString( name, sizeof(name) ) )
+	if ( !reader.ReadString( name, sizeof( name ) ) )
 		throw ParsingError_t( "invalid event name in SVC_GameEventList" );
 
 	GameEvent game_event( eventID, name );
 
 	GameEventValueType value_type = (GameEventValueType)reader.ReadUBitLong( 3 );
 
-	while( value_type != VAL_NONE )
+	while ( value_type != VAL_NONE )
 	{
 		char fieldname[ 32 ];
-		if( !reader.ReadString( fieldname, sizeof(fieldname) ) )
+		if ( !reader.ReadString( fieldname, sizeof( fieldname ) ) )
 			throw ParsingError_t( "invalid event field name in SVC_GameEventList" );
 
 		game_event.AddField( fieldname, value_type );
@@ -89,7 +89,7 @@ void DemoParser::ParseGameEvent( bf_read &reader )
 
 void ReadGameEventFieldValue( bf_read &reader, const GameEvent::GameEventField &field )
 {
-	switch( field.field_type )
+	switch ( field.field_type )
 	{
 		case VAL_NONE:
 		{
@@ -98,7 +98,7 @@ void ReadGameEventFieldValue( bf_read &reader, const GameEvent::GameEventField &
 		case VAL_STRING:
 		{
 			char data[ 128 ];
-			reader.ReadString( data, sizeof(data) );
+			reader.ReadString( data, sizeof( data ) );
 			break;
 		}
 		case VAL_FLOAT:
@@ -138,7 +138,7 @@ void ReadGameEventFieldValue( bf_read &reader, const GameEvent::GameEventField &
 
 void DemoParser::HandleGameEvent( bf_read &reader )
 {
-	int eventID = reader.ReadUBitLong( 9 );
+	const int eventID = reader.ReadUBitLong( 9 );
 
 	const GameEvent &event = GetGameEvent( eventID );
 
@@ -146,25 +146,25 @@ void DemoParser::HandleGameEvent( bf_read &reader )
 
 	// Check if we have a special handler for this event
 
-	if( strcmp( name, "player_death" ) == 0 )
+	if ( strcmp( name, "player_death" ) == 0 )
 	{
 		// Ignore kills done at the very beginning of the demo, because some player info might still be missing
-		if( m_iCurrentTick > (int)( m_iTickRate * 0.5 ) )
+		if ( m_iCurrentTick > (int)( m_iTickRate * 0.5 ) )
 		{
 			HandlePlayerDeathEvent( reader, event );
 			return;
 		}
 	}
-	else if( strcmp( name, "round_start" ) == 0 )
+	else if ( strcmp( name, "round_start" ) == 0 )
 	{
 		OnRoundStartEvent();
 	}
-	else if( strcmp( name, "player_disconnect" ) == 0 )
+	else if ( strcmp( name, "player_disconnect" ) == 0 )
 	{
 		HandlePlayerDisconnectEvent( reader, event );
 		return;
 	}
-	else if( m_bIsPOV && strcmp( name, "player_spawn" ) == 0 )
+	else if ( m_bIsPOV && strcmp( name, "player_spawn" ) == 0 )
 	{
 		HandlePlayerSpawnEvent( reader, event );
 		return;
@@ -172,9 +172,9 @@ void DemoParser::HandleGameEvent( bf_read &reader )
 
 	// A generic event - handle it here
 
-	size_t fields = event.GetFieldCount();
+	const size_t fields = event.GetFieldCount();
 
-	for( size_t i = 0; i < fields; ++i )
+	for ( size_t i = 0; i < fields; ++i )
 	{
 		const GameEvent::GameEventField &field = event.GetField( i );
 
@@ -186,17 +186,17 @@ void DemoParser::HandleGameEvent( bf_read &reader )
 
 void DemoParser::HandlePlayerSpawnEvent( bf_read &reader, const GameEvent &event )
 {
-	size_t fields = event.GetFieldCount();
+	const size_t fields = event.GetFieldCount();
 
-	for( size_t i = 0; i < fields; ++i )
+	for ( size_t i = 0; i < fields; ++i )
 	{
 		const GameEvent::GameEventField &field = event.GetField( i );
 
-		if( strcmp( field.field_name, "userid" ) == 0 )
+		if ( strcmp( field.field_name, "userid" ) == 0 )
 		{
-			int userid = reader.ReadShort();
+			const int userid = reader.ReadShort();
 
-			if( userid == m_iPOVPlayerUserID )
+			if ( userid == m_iPOVPlayerUserID )
 				m_bPOVPlayerIsDead = false;
 		}
 		else
@@ -210,46 +210,46 @@ void DemoParser::HandlePlayerSpawnEvent( bf_read &reader, const GameEvent &event
 
 void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event )
 {
-	if( m_bIsPOV && m_iPOVPlayerUserID < 0 )
+	if ( m_bIsPOV && m_iPOVPlayerUserID < 0 )
 	{
 		AddWarning( m_pDemo->GetFileName(), POV_PLAYER_NOT_FOUND );
 	}
 
-	int fields = event.GetFieldCount();
+	const size_t fields = event.GetFieldCount();
 
 	char weaponName[ 24 ] = "unknown";
 
 	kill_info_t killInfo;
-	memset( &killInfo, 0, sizeof(killInfo) );
+	memset( &killInfo, 0, sizeof( killInfo ) );
 
 	Player *pAttacker = nullptr;
-	Player *pVictim = nullptr;
+	const Player *pVictim = nullptr;
 
-	for( int i = 0; i < fields; ++i )
+	for ( size_t i = 0; i < fields; ++i )
 	{
 		const GameEvent::GameEventField &field = event.GetField( i );
 
-		if( strcmp( field.field_name, "userid" ) == 0 )
+		if ( strcmp( field.field_name, "userid" ) == 0 )
 		{
 			pVictim = FindPlayerByUserId( reader.ReadShort() );
 		}
-		else if( strcmp( field.field_name, "attacker" ) == 0 )
+		else if ( strcmp( field.field_name, "attacker" ) == 0 )
 		{
 			pAttacker = FindPlayerByUserId( reader.ReadShort() );
 		}
-		else if( strcmp( field.field_name, "weapon" ) == 0 )
+		else if ( strcmp( field.field_name, "weapon" ) == 0 )
 		{
-			reader.ReadString( weaponName, sizeof(weaponName) );
+			reader.ReadString( weaponName, sizeof( weaponName ) );
 		}
-		else if( strcmp( field.field_name, "headshot" ) == 0 )
+		else if ( strcmp( field.field_name, "headshot" ) == 0 )
 		{
 			killInfo.headshot = reader.ReadOneBit();
 		}
-		else if( strcmp( field.field_name, "penetrated" ) == 0 ) // Clientmod only
+		else if ( strcmp( field.field_name, "penetrated" ) == 0 ) // Clientmod only
 		{
 			killInfo.penetrated = reader.ReadByte();
 		}
-		else if( strcmp( field.field_name, "noscope" ) == 0 ) // Clientmod only
+		else if ( strcmp( field.field_name, "noscope" ) == 0 ) // Clientmod only
 		{
 			killInfo.noscope = reader.ReadOneBit();
 		}
@@ -259,23 +259,23 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		}
 	}
 
-	if( !pVictim )
+	if ( !pVictim )
 		throw ParsingError_t( "victim info not found in HandlePlayerDeathEvent" );
 
-	if( m_bIsPOV && pVictim->userID == m_iPOVPlayerUserID )
+	if ( m_bIsPOV && pVictim->userID == m_iPOVPlayerUserID )
 	{
 		m_bPOVPlayerIsDead = true;
 	}
 
 	bool bSpectatingAttacker = false;
-	bool bSuicide = !pAttacker || pAttacker == pVictim;
+	const bool bSuicide = !pAttacker || pAttacker == pVictim;
 
 #ifdef _DEBUG_AFK_KILLS
-	if( !bSuicide && pVictim->activity == PL_AFK )
+	if ( !bSuicide && pVictim->activity == PL_AFK )
 	{
 		printf( "\nVictim %s was AFK at tick %d\n\n", pVictim->name, m_iCurrentTick );
 	}
-	else if( !bSuicide && pAttacker->activity == PL_AFK )
+	else if ( !bSuicide && pAttacker->activity == PL_AFK )
 	{
 		printf( "\nAttacker %s was AFK at tick %d\n\n", pAttacker->name, m_iCurrentTick );
 	}
@@ -283,72 +283,72 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 	// Ignore suicides and kills vs players who are AFK
 	// Also ignore bot kills if the settings disallow them
-	if( bSuicide
+	if ( bSuicide
 	|| pVictim->activity == PL_AFK
-	|| (pVictim->fakeplayer && !Settings()->ShouldTickFragsVsBots())
-	|| (pAttacker->fakeplayer && !Settings()->ShouldTickFragsByBots()) )
+	|| ( pVictim->fakeplayer && !Settings()->ShouldTickFragsVsBots() )
+	|| ( pAttacker->fakeplayer && !Settings()->ShouldTickFragsByBots() ) )
 	{
 		return;
 	}
 
 	// Check if the POV recorder is spectating the other player doing the kill
-	if( m_bIsPOV && m_bPOVPlayerIsDead && pAttacker->userID != m_iPOVPlayerUserID )
+	if ( m_bIsPOV && m_bPOVPlayerIsDead && pAttacker->userID != m_iPOVPlayerUserID )
 	{
-		Player *pPOVPlayer = FindPlayerByUserId( m_iPOVPlayerUserID );
+		const Player *pPOVPlayer = FindPlayerByUserId( m_iPOVPlayerUserID );
 
-		if( !pPOVPlayer )
+		if ( !pPOVPlayer )
 			throw ParsingError_t( "POV player info not found in HandlePlayerDeathEvent" );
 
-		EntityEntry *pPOVPlayerEntity = FindEntity( pPOVPlayer->entityIndex );
+		const EntityEntry *pPOVPlayerEntity = FindEntity( pPOVPlayer->entityIndex );
 
-		if( !pPOVPlayerEntity )
+		if ( !pPOVPlayerEntity )
 			throw ParsingError_t( "POV player entity not found in HandlePlayerDeathEvent" );
 
-		PropEntry *prop = pPOVPlayerEntity->FindProp( "m_iPlayerState" );
+		const PropEntry *prop = pPOVPlayerEntity->FindProp( "m_iPlayerState" );
 
-		if( !prop || prop->m_pPropValue->m_value.m_int == STATE_OBSERVER_MODE )
+		if ( !prop || prop->m_pPropValue->m_value.m_int == STATE_OBSERVER_MODE )
 		{
 			prop = pPOVPlayerEntity->FindProp( "m_iObserverMode" );
 
-			int observer_mode = prop? prop->m_pPropValue->m_value.m_int : OBS_MODE_IN_EYE; // Assume in-eye if prop not found
+			const int observer_mode = prop ? prop->m_pPropValue->m_value.m_int : OBS_MODE_IN_EYE; // Assume in-eye if prop not found
 
 			prop = pPOVPlayerEntity->FindProp( "m_hObserverTarget" );
 
-			if( prop && observer_mode == OBS_MODE_IN_EYE )
+			if ( prop && observer_mode == OBS_MODE_IN_EYE )
 			{
-				int spectated_player_entidx = GetEntIndexFromEHandleInt( prop->m_pPropValue->m_value.m_int );
+				const int spectated_player_entidx = GetEntIndexFromEHandleInt( prop->m_pPropValue->m_value.m_int );
 
-				Player *pSpectated = FindPlayerByEntityIndex( spectated_player_entidx );
+				const Player *pSpectated = FindPlayerByEntityIndex( spectated_player_entidx );
 
-				if( pSpectated && pSpectated->userID == pAttacker->userID )
+				if ( pSpectated && pSpectated->userID == pAttacker->userID )
 					bSpectatingAttacker = true;
 			}
 		}
 	}
 
 	// Don't bother adding kills on POV demos that are not seen by the recorder
-	if( m_bIsPOV && pAttacker->userID != m_iPOVPlayerUserID && !bSpectatingAttacker )
+	if ( m_bIsPOV && pAttacker->userID != m_iPOVPlayerUserID && !bSpectatingAttacker )
 	{
 		return;
 	}
 
 	// This is a valid kill - check for attributes and register it
 
-	EntityEntry *pEntAttacker = FindEntity( pAttacker->entityIndex );
-	EntityEntry *pEntVictim = FindEntity( pVictim->entityIndex );
+	const EntityEntry *pEntAttacker = FindEntity( pAttacker->entityIndex );
+	const EntityEntry *pEntVictim = FindEntity( pVictim->entityIndex );
 
-	if( !pEntAttacker )
+	if ( !pEntAttacker )
 		throw ParsingError_t( "Attacker entity not found in HandlePlayerDeathEvent" );
 
-	bool bullet_kill = WeaponUsesBullets( weaponName );
+	const bool bullet_kill = WeaponUsesBullets( weaponName );
 
 	// Add bullet kills to post-check list
-	if( bullet_kill )
+	if ( bullet_kill )
 	{
 		bool bAlreadyIn = false;
-		for( size_t i = 0; i < m_PlayerPostCheckData.size(); ++i )
+		for ( size_t i = 0; i < m_PlayerPostCheckData.size(); ++i )
 		{
-			if( m_PlayerPostCheckData[ i ].pPlayer == pAttacker
+			if ( m_PlayerPostCheckData[ i ].pPlayer == pAttacker
 			&& m_PlayerPostCheckData[ i ].nKillTick == m_iCurrentTick )
 			{
 				bAlreadyIn = true;
@@ -356,7 +356,7 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 			}
 		}
 
-		if( !bAlreadyIn )
+		if ( !bAlreadyIn )
 		{
 			PostCheckData_t data;
 			data.pPlayer = pAttacker;
@@ -366,15 +366,15 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 		}
 	}
 
-	PropEntry *prop;
+	const PropEntry *prop;
 
 	// ===== Teamkill check ====================
 	prop = pEntAttacker->FindProp( "m_iTeamNum" );
 
 	// Attacker team prop MUST be found
-	if( !prop )
+	if ( !prop )
 	{
-		if( !bSpectatingAttacker )
+		if ( !bSpectatingAttacker )
 		{
 			throw ParsingError_t( "Attacker team prop not found in HandlePlayerDeathEvent" );
 		}
@@ -390,12 +390,12 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 	killInfo.teamkill = false;
 
 	// Victim entity might be NULL, because it's possible the player got killed before ever entering the PVS
-	if( pEntVictim )
+	if ( pEntVictim )
 	{
 		prop = pEntVictim->FindProp( "m_iTeamNum" );
-		if( prop )
+		if ( prop )
 		{
-			killInfo.teamkill = (killInfo.team == prop->m_pPropValue->m_value.m_int);
+			killInfo.teamkill = ( killInfo.team == prop->m_pPropValue->m_value.m_int );
 		}
 		else
 		{
@@ -408,11 +408,11 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 	// Grenade frags can't be flashed, because that's stupid
 	// Also not knife frags, but it doesn't matter in those
-	if( bullet_kill )
+	if ( bullet_kill )
 	{
-		float timeSinceFlashed = GetTimeBetweenTicks( m_iCurrentTick, pAttacker->flashinfo.tick );
+		const float timeSinceFlashed = GetTimeBetweenTicks( m_iCurrentTick, pAttacker->flashinfo.tick );
 		constexpr float minRemainingFlashedTime = 2.3f;
-		killInfo.blind = (pAttacker->flashinfo.time - timeSinceFlashed) >= minRemainingFlashedTime;
+		killInfo.blind = ( pAttacker->flashinfo.time - timeSinceFlashed ) >= minRemainingFlashedTime;
 	}
 
 	// ===== Mid-air check ====================
@@ -420,53 +420,53 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 	killInfo.midair_status = ON_GROUND;
 
 	// Don't check for spectated mid-air kills in POV demos, because for some reason send props are not properly updated
-	if( bullet_kill && !bSpectatingAttacker )
+	if ( bullet_kill && !bSpectatingAttacker )
 	{
 		prop = pEntAttacker->FindProp( "m_fFlags" );
 
 		// This CAN be NULL, if the flags never had to be updated before a kill was made
-		if( prop )
+		if ( prop )
 		{
 			uint32 flags = prop->m_pPropValue->m_value.m_int;
 
-			if( !(flags & FL_ONGROUND) )
+			if ( !( flags & FL_ONGROUND ) )
 			{
 				prop = pEntAttacker->FindProp( "movetype" );
 
-				if( !prop )
+				if ( !prop )
 				{
-					killInfo.midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
+					killInfo.midair_status = ( pAttacker->airstatus == PL_WENT_UP_IN_AIR ) ? JUMPSHOT : ON_GROUND;
 				}
-				else if( prop->m_pPropValue->m_value.m_int == MOVETYPE_LADDER )
+				else if ( prop->m_pPropValue->m_value.m_int == MOVETYPE_LADDER )
 				{
 					killInfo.midair_status = LADDERSHOT;
 				}
 				else
 				{
-					killInfo.midair_status = (pAttacker->airstatus == PL_WENT_UP_IN_AIR) ? JUMPSHOT : ON_GROUND;
+					killInfo.midair_status = ( pAttacker->airstatus == PL_WENT_UP_IN_AIR ) ? JUMPSHOT : ON_GROUND;
 				}
 			}
 		}
 	}
 
 	// ===== Noscope check ====================
-	if( !killInfo.noscope && WeaponIsSniper( weaponName ) )
+	if ( !killInfo.noscope && WeaponIsSniper( weaponName ) )
 	{
 		prop = pEntAttacker->FindProp( "m_iFOV" );
 
 		// This can be NULL if the player noscopes someone before ever zooming in
-		if( prop )
+		if ( prop )
 		{
 			killInfo.noscope = prop->m_pPropValue->m_value.m_int == NOSCOPE_FOV;
 		}
 		// Assume it's a noscope if the prop wasn't updated yet
 		// This could lead to false results if the player started recording while zoomed in
-		else 
+		else
 		{
 			killInfo.noscope = true;
 		}
 	}
-		
+
 	// ===== Flickshot check ====================
 	// Actually, this has to be checked after packet entities have been processed for this tick
 	killInfo.flickshot = false;
@@ -476,21 +476,21 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 	prop = pEntAttacker->FindProp( "m_vecOrigin" );
 
-	if( !prop )
+	if ( !prop )
 		throw ParsingError_t( "Attacker origin prop not found in HandlePlayerDeathEvent" );
 
-	Vector vecAttacker = prop->m_pPropValue->m_value.m_vector;
+	const Vector vecAttacker = prop->m_pPropValue->m_value.m_vector;
 
-	if( bullet_kill && pEntVictim )
+	if ( bullet_kill && pEntVictim )
 	{
 		prop = pEntVictim->FindProp( "m_vecOrigin" );
 
-		if( !prop )
+		if ( !prop )
 			throw ParsingError_t( "Victim origin prop not found in HandlePlayerDeathEvent" );
 
-		Vector vecVictim = prop->m_pPropValue->m_value.m_vector;
+		const Vector vecVictim = prop->m_pPropValue->m_value.m_vector;
 
-		Vector to( vecVictim - vecAttacker );
+		const Vector to( vecVictim - vecAttacker );
 
 		killInfo.distance = to.Length();
 	}
@@ -508,17 +508,17 @@ void DemoParser::HandlePlayerDeathEvent( bf_read &reader, const GameEvent &event
 
 void DemoParser::HandlePlayerDisconnectEvent( bf_read &reader, const GameEvent &event )
 {
-	size_t fields = event.GetFieldCount();
+	const size_t fields = event.GetFieldCount();
 
-	for( size_t i = 0; i < fields; ++i )
+	for ( size_t i = 0; i < fields; ++i )
 	{
 		const GameEvent::GameEventField &field = event.GetField( i );
 
-		if( strcmp( field.field_name, "userid" ) == 0 )
+		if ( strcmp( field.field_name, "userid" ) == 0 )
 		{
 			Player *player = FindPlayerByUserId( reader.ReadShort() );
 
-			if( player ) // Might not be found if the disconnect happens before string tables are updated
+			if ( player ) // Might not be found if the disconnect happens before string tables are updated
 			{
 				m_ExpiredUserIDs.push_back( player->userID );
 				player->entityIndex = -1;
@@ -540,12 +540,12 @@ void DemoParser::OnRoundStartEvent( void )
 
 	// Delete any expired players after we checked if they made any frags before leaving
 	// Don't use size_t here as it is unsigned, and "i" has to go below 0
-	for( int i = (int)m_ExpiredUserIDs.size() - 1; i >= 0; --i )
+	for ( int i = (int)m_ExpiredUserIDs.size() - 1; i >= 0; --i )
 	{
 		bool found = false;
-		for( auto pl = m_Players.begin(); pl != m_Players.end(); ++pl )
+		for ( auto pl = m_Players.begin(); pl != m_Players.end(); ++pl )
 		{
-			if( pl->userID == m_ExpiredUserIDs[ i ] )
+			if ( pl->userID == m_ExpiredUserIDs[ i ] )
 			{
 				m_Players.erase( pl );
 				found = true;
@@ -562,13 +562,13 @@ void DemoParser::OnRoundStartEvent( void )
 	m_iNewRoundTick = m_iCurrentTick;
 
 	// Reset player kills for the next round
-	for( auto it = m_Players.begin(); it != m_Players.end(); ++it )
+	for ( auto it = m_Players.begin(); it != m_Players.end(); ++it )
 	{
 		it->ResetKills();
 
 		// Set player statuses to AFK on STV demos, so we know to look for origin/viewangle updates
 		// Don't do this on POV demos, because the player entities might not be updated before being killed
-		if( !m_bIsPOV )
+		if ( !m_bIsPOV )
 		{
 			it->activity = PL_AFK;
 		}

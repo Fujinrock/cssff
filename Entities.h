@@ -66,7 +66,7 @@ enum SendPropType
 class SendProp
 {
 public:
-	char m_propName[256];
+	char m_propName[ 256 ];
 	SendPropType m_propType;
 	int m_flags;
 	float m_fLowValue;
@@ -126,7 +126,7 @@ struct Prop_t
 
 	~Prop_t()
 	{
-		if( m_type == DPT_String )
+		if ( m_type == DPT_String )
 			delete[] m_value.m_pString;
 	}
 
@@ -156,7 +156,7 @@ struct PropEntry
 
 	~PropEntry()
 	{
-		if( m_pFlattenedProp->m_prop->m_propType == DPT_Array )
+		if ( m_pFlattenedProp->m_prop->m_propType == DPT_Array )
 			delete[] m_pPropValue;
 		else
 			delete m_pPropValue;
@@ -179,18 +179,18 @@ struct EntityEntry
 
 	~EntityEntry()
 	{
-		for( auto i = m_props.begin(); i != m_props.end(); ++i )
+		for ( auto i = m_props.begin(); i != m_props.end(); ++i )
 		{
 			delete *i;
 		}
 	}
 
-	PropEntry *FindProp( const char *pName )
+	PropEntry *FindProp( const char *pName ) const
 	{
-		for( auto i = m_props.begin(); i != m_props.end(); ++i )
+		for ( auto i = m_props.begin(); i != m_props.end(); ++i )
 		{
 			PropEntry *pProp = *i;
-			if( strcmp( pProp->m_pFlattenedProp->m_prop->m_propName, pName ) == 0 )
+			if ( strcmp( pProp->m_pFlattenedProp->m_prop->m_propName, pName ) == 0 )
 			{
 				return pProp;
 			}
@@ -201,9 +201,9 @@ struct EntityEntry
 	void AddOrUpdateProp( FlattenedPropEntry *pFlattenedProp, Prop_t *pPropValue )
 	{
 		PropEntry *pProp = FindProp( pFlattenedProp->m_prop->m_propName );
-		if( pProp )
+		if ( pProp )
 		{
-			if( pFlattenedProp->m_prop->m_propType == DPT_Array )
+			if ( pFlattenedProp->m_prop->m_propType == DPT_Array )
 				delete[] pProp->m_pPropValue;
 			else
 				delete pProp->m_pPropValue;

@@ -5,6 +5,7 @@
 #include <conio.h>
 #include <fstream>
 #include <format>
+#include <algorithm>
 #include <filesystem>
 
 DemoParser *gpParser = nullptr;
@@ -34,6 +35,7 @@ DemoParser::DemoParser( DemoFile *pDemo )
 	m_iMaxClients = -1;
 
 	m_iCurrentTick = 0;
+	m_iHighestTick = 0;
 	m_iNewRoundTick = 0;
 
 	m_bServerInfoEncountered = false;
@@ -42,7 +44,7 @@ DemoParser::DemoParser( DemoFile *pDemo )
 	m_iServerClassBits = 0;
 	m_iNumStringTables = 0;
 
-	m_iMaxProgressBarDots = Settings()->BatchProcessingEnabled()? 5 : 10;
+	m_iMaxProgressBarDots = Settings()->BatchProcessingEnabled() ? 5 : 10;
 	m_iProgressBarDotsPrinted = 0;
 
 	memset( &m_PropIndices, 0, sizeof( m_PropIndices ) );
@@ -60,7 +62,7 @@ DemoParser::~DemoParser()
 	gpParser = nullptr;
 
 	const size_t num_ents = m_Entities.size();
-	for( size_t i = 0; i < num_ents; ++i )
+	for ( size_t i = 0; i < num_ents; ++i )
 	{
 		delete m_Entities[ i ];
 	}
@@ -72,10 +74,10 @@ DemoParser::~DemoParser()
  */
 bool DemoParser::Parse( void )
 {
-	if( !m_pDemo || !m_pDemo->IsValidDemo() )
+	if ( !m_pDemo || !m_pDemo->IsValidDemo() )
 		return false;
 
-	if( !Settings()->BatchProcessingEnabled() )
+	if ( !Settings()->BatchProcessingEnabled() )
 	{
 		printf( "%s: Parsing demo %s...\n\n", CSSFF_NAME, m_pDemo->GetFileName().c_str() );
 		printf( "Press 'Q' to abort early\n\n" );
@@ -90,47 +92,47 @@ bool DemoParser::Parse( void )
 	bool bSynced = false;	// Was sync tick encountered yet?
 
 	// Set up the progress bar
-	const int iProgressBarTickInterval = (m_demoHeader.playback_ticks > 0)? (m_demoHeader.playback_ticks / m_iMaxProgressBarDots) : (500'000 / m_iMaxProgressBarDots);
-	int iLastTick = 0;
-	int iTicksProgressed = 0;
+	const int iProgressBarBytesInterval = m_pDemo->GetFileSize() / m_iMaxProgressBarDots;
+	int iPrevBytesRead = m_reader.GetNumBytesRead();
+	int iBytesProgressed = 0;
 
 
 	// ===== The main parsing loop ===========================================================================
 
-	while( true )
+	while ( true )
 	{
 		// Read command type
-		byte cmd = m_reader.ReadByte();
+		const byte cmd = m_reader.ReadByte();
 
-		if( cmd < dem_firstcmd || cmd > dem_lastcmd || m_reader.IsOverflowed() )
+		if ( cmd < dem_firstcmd || cmd > dem_lastcmd || m_reader.IsOverflowed() )
 			throw ParsingError_t( "invalid cmd number" );
 
 		// Done parsing?
-		if( cmd == dem_stop )
+		if ( cmd == dem_stop )
 			break;
 
 		// Read current tick
 		m_iCurrentTick = m_reader.ReadLong();
 
+		if ( bSynced && m_iCurrentTick > m_iHighestTick )
+			m_iHighestTick = m_iCurrentTick;
+
 		// Print dots for the progress bar
-		if( bSynced )
+		iBytesProgressed += m_reader.GetNumBytesRead() - iPrevBytesRead;
+		iPrevBytesRead = m_reader.GetNumBytesRead();
+		if ( iBytesProgressed >= iProgressBarBytesInterval )
 		{
-			iTicksProgressed += m_iCurrentTick - iLastTick;
-			iLastTick = m_iCurrentTick;
-			if( iTicksProgressed >= iProgressBarTickInterval )
-			{
-				printf( "." );
-				++m_iProgressBarDotsPrinted;
-				iTicksProgressed = 0;
-			}
+			printf( "." );
+			++m_iProgressBarDotsPrinted;
+			iBytesProgressed = 0;
 		}
 
 		// Handle the command
-		switch( cmd )
+		switch ( cmd )
 		{
 			case dem_synctick:
 			{
-				if( !m_bServerInfoEncountered )
+				if ( !m_bServerInfoEncountered )
 				{
 					throw ParsingError_t( "SVC_ServerInfo not encountered by sync tick" );
 				}
@@ -180,11 +182,11 @@ bool DemoParser::Parse( void )
 		}
 
 		// Check if the user wants to abort parsing
-		if( _kbhit() )
+		if ( _kbhit() )
 		{
-			int ch = toupper( _getch() );
+			const int ch = toupper( _getch() );
 
-			if( ch == 'Q' )
+			if ( ch == 'Q' )
 			{
 				bAborted = true;
 				break;
@@ -193,7 +195,7 @@ bool DemoParser::Parse( void )
 	}
 
 	// Do post-parsing stuff
-	DemoParser::OnParsingEnd( bAborted? ABORTED : DONE );
+	DemoParser::OnParsingEnd( bAborted ? ABORTED : DONE );
 
 	return !bAborted;
 }
@@ -202,12 +204,12 @@ bool DemoParser::Parse( void )
 
 float DemoParser::GetTimeBetweenTicks( int tick1, int tick2 ) const
 {
-	if( tick1 == tick2 )
+	if ( tick1 == tick2 )
 		return 0.f;
 
 	int tickDelta = abs( tick1 - tick2 );
 
-	if( m_fTickInterval <= 0.f )
+	if ( m_fTickInterval <= 0.f )
 		throw ParsingError_t( "invalid tick interval" );
 
 	return (float)tickDelta * m_fTickInterval;
@@ -258,64 +260,64 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 	FindRoundFrags();
 
 	// Print the rest of the progress bar
-	const int iMinProgressBarDots = (result != DONE) ? 3 : m_iMaxProgressBarDots;
+	const int iMinProgressBarDots = ( result != DONE ) ? 3 : m_iMaxProgressBarDots;
 
-	if( m_iProgressBarDotsPrinted < iMinProgressBarDots )
+	if ( m_iProgressBarDotsPrinted < iMinProgressBarDots )
 	{
-		for( int i = 0; i < iMinProgressBarDots - m_iProgressBarDotsPrinted; ++i )
+		for ( int i = 0; i < iMinProgressBarDots - m_iProgressBarDotsPrinted; ++i )
 			printf( "." );
 	}
 
 	// Add this demo to the parsing error list if there was an error
-	if( result == ERROR && pError )
+	if ( result == ERROR && pError )
 	{
 		std::string sError = std::format( "{}: {} on tick {}\n", m_pDemo->GetFileName(), pError->error_msg, pError->tick );
 		g_FailedDemos.emplace_back( sError );
 	}
 
 	// Print the appropriate ending message
-	if( Settings()->BatchProcessingEnabled() )
+	if ( Settings()->BatchProcessingEnabled() )
 	{
-		if( result == DONE )
+		if ( result == DONE )
 			printf( " Successfully parsed" );
-		else if( result == ERROR )
+		else if ( result == ERROR )
 			printf( " Error encountered" );
 		else
 			printf( " Parsing aborted by user" );
 	}
 	else
 	{
-		if( result == DONE )
+		if ( result == DONE )
 			printf( "Done parsing!\n\n\n" );
-		else if( result == ERROR )
+		else if ( result == ERROR )
 			printf( "Error encountered!\n\n\n" );
 		else
 			printf( "Parsing aborted by user!\n\tNot all frags have necessarily been found.\n\n\n" );
 	}
 
 	// Add frag info to batch output if we're batch processing
-	if( Settings()->BatchProcessingEnabled() )
+	if ( Settings()->BatchProcessingEnabled() )
 	{
-		if( m_Frags.empty() )
+		if ( m_Frags.empty() )
 		{
 			printf( " (no frags found)\n" );
 			return;
 		}
 
-		printf( " (%d frag%s found)\n", m_Frags.size(), m_Frags.size() > 1? "s":"" );
-		g_BatchOutput 
+		printf( " (%d frag%s found)\n", m_Frags.size(), m_Frags.size() > 1 ? "s" : "" );
+		g_BatchOutput
 			+= "========== "
 			+ m_pDemo->GetFileName()
 			+ " ("
-			+ (m_bIsPOV ? "POV" : "STV")
+			+ ( m_bIsPOV ? "POV" : "STV" )
 			+ " @ "
 			+ m_demoHeader.mapname
 			+ ") ==========\n\n";
 
-		for( const Frag &frag : m_Frags )
+		for ( const Frag &frag : m_Frags )
 		{
 			char szFragDescription[ 1024 ];
-			frag.GetStringRepresentation( szFragDescription, sizeof(szFragDescription) );
+			frag.GetStringRepresentation( szFragDescription, sizeof( szFragDescription ) );
 			g_BatchOutput += szFragDescription;
 		}
 	}
@@ -326,29 +328,29 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		std::ofstream file_output;
 		std::string filename;
 		std::string buffer;
-		const bool bDumpToFile = Settings()->DumpToFileEnabled() && (!g_WarningDemos.empty() || !g_FailedDemos.empty() || !m_Frags.empty());
+		const bool bDumpToFile = Settings()->DumpToFileEnabled() && ( !g_WarningDemos.empty() || !g_FailedDemos.empty() || !m_Frags.empty() );
 
 		const bool bShouldWriteToDemoDir = bDumpToFile && Settings()->ShouldWriteOutputToDemoDirectory();
 		bool bCantOverwriteFile = false;
 
-		if( bDumpToFile )
+		if ( bDumpToFile )
 		{
 			filename = m_pDemo->GetFileName();
 			RemoveFileExtension( filename );
 			filename += ".txt";
 
-			std::string filepath = (bShouldWriteToDemoDir ? g_BatchDirectory : g_ProgramDirectory) + filename;
+			std::string filepath = ( bShouldWriteToDemoDir ? g_BatchDirectory : g_ProgramDirectory ) + filename;
 
-			if( std::filesystem::exists( filepath ) )
+			if ( std::filesystem::exists( filepath ) )
 			{
 				std::ifstream file( filepath, std::ios::binary );
 
-				if( file.is_open() )
+				if ( file.is_open() )
 				{
 					std::string line;
 					std::getline( file, line );
 
-					if( line.find( "FOUND FRAGS:" ) != std::string::npos )
+					if ( line.find( "FOUND FRAGS:" ) != std::string::npos )
 						file_output.open( filepath, std::ios::binary );
 					else
 						bCantOverwriteFile = true;
@@ -365,12 +367,12 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 				file_output.open( filepath, std::ios::binary );
 			}
 
-			if( file_output.is_open() )
+			if ( file_output.is_open() )
 			{
 				WRITE_UTF8_BOM( file_output );
 
 				// Write the singular error in to the file
-				if( result == ERROR && pError )
+				if ( result == ERROR && pError )
 				{
 					buffer = std::format( "PARSING ERROR: {} on tick {}\n\n", pError->error_msg, pError->tick );
 					file_output.write( buffer.c_str(), buffer.length() );
@@ -379,17 +381,17 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		}
 
 		// Print/write warnings
-		if( !g_WarningDemos.empty() )
+		if ( !g_WarningDemos.empty() )
 		{
 			printf( "========== WARNINGS ==========\n\n" );
 
-			if( bDumpToFile && file_output.is_open() )
+			if ( bDumpToFile && file_output.is_open() )
 			{
 				buffer = "WARNINGS:\n";
 				file_output.write( buffer.c_str(), buffer.length() );
 			}
 
-			for( const ParsingWarning_t &warning : g_WarningDemos )
+			for ( const ParsingWarning_t &warning : g_WarningDemos )
 			{
 				std::string sWarning;
 				warning.GetString( sWarning, false );
@@ -397,7 +399,7 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 				buffer = std::format( "- {}", sWarning );
 				printf( buffer.c_str() );
 
-				if( bDumpToFile && file_output.is_open() )
+				if ( bDumpToFile && file_output.is_open() )
 				{
 					file_output.write( buffer.c_str(), buffer.length() );
 				}
@@ -405,21 +407,21 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 
 			printf( "\n\n" );
 
-			if( bDumpToFile && file_output.is_open() )
+			if ( bDumpToFile && file_output.is_open() )
 				file_output << "\n";
 		}
 
 		printf( "========== FOUND FRAGS ==========\n\n" );
 
-		if( bDumpToFile && file_output.is_open() )
+		if ( bDumpToFile && file_output.is_open() )
 			file_output << "FOUND FRAGS:\n\n";
 
 		// Print/write frags
-		if( m_Frags.empty() )
+		if ( m_Frags.empty() )
 		{
 			buffer = "No frags found with the used settings";
 
-			if( bDumpToFile && file_output.is_open() )
+			if ( bDumpToFile && file_output.is_open() )
 				file_output.write( buffer.c_str(), buffer.length() );
 
 			buffer += "\n\n";
@@ -428,20 +430,20 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 		}
 		else
 		{
-			for( const Frag &frag : m_Frags )
+			for ( const Frag &frag : m_Frags )
 			{
 				char szFragDescription[ 1024 ];
-				frag.GetStringRepresentation( szFragDescription, sizeof(szFragDescription) );
+				frag.GetStringRepresentation( szFragDescription, sizeof( szFragDescription ) );
 				printf( szFragDescription );
 
-				if( bDumpToFile && file_output.is_open() )
+				if ( bDumpToFile && file_output.is_open() )
 					file_output.write( szFragDescription, strlen( szFragDescription ) );
 			}
 		}
 
-		if( bDumpToFile )
+		if ( bDumpToFile )
 		{
-			if( file_output.is_open() )
+			if ( file_output.is_open() )
 			{
 				printf( "Info has been written to file \"%s\" in %s folder\n\n", filename.c_str(), bShouldWriteToDemoDir ? "demo's" : "program" );
 
@@ -456,7 +458,7 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 
 	// Write VDM if need be
 	// This is written here regardless of if we're batch-processing or not
-	if( Settings()->ShouldWriteVDM() )
+	if ( Settings()->ShouldWriteVDM() )
 	{
 		WriteVDM();
 	}
@@ -466,7 +468,7 @@ void DemoParser::OnParsingEnd( ParsingResult result, ParsingError_t *pError )
 
 void DemoParser::WriteVDM( void ) const
 {
-	if( m_Frags.empty() )
+	if ( m_Frags.empty() )
 		return;
 
 	const std::string vdmSubDir = Settings()->GetVDMDirectory();
@@ -476,18 +478,18 @@ void DemoParser::WriteVDM( void ) const
 	std::string writeToDir = bShouldWriteToDemoDir ? g_BatchDirectory : g_ProgramDirectory;
 
 	// Check whether we should create a folder for the VDM subdirectory
-	if( !vdmSubDir.empty() )
+	if ( !vdmSubDir.empty() )
 	{
 		size_t pos = writeToDir.length() < 2 ? std::string::npos : writeToDir.find_last_of( "/\\", writeToDir.length() - 2 );
 
-		if( pos == std::string::npos || _stricmp( vdmSubDir.c_str(), (writeToDir.substr( pos + 1, (writeToDir.length() - 1) - (pos + 1) )).c_str() ) != 0 )
+		if ( pos == std::string::npos || _stricmp( vdmSubDir.c_str(), ( writeToDir.substr( pos + 1, ( writeToDir.length() - 1 ) - ( pos + 1 ) ) ).c_str() ) != 0 )
 		{
-			if( !std::filesystem::exists( writeToDir + vdmSubDir ) )
+			if ( !std::filesystem::exists( writeToDir + vdmSubDir ) )
 			{
 				std::filesystem::create_directories( writeToDir + vdmSubDir );
 			}
 
-			writeToDir += (vdmSubDir + '\\');
+			writeToDir += ( vdmSubDir + '\\' );
 		}
 	}
 
@@ -496,11 +498,11 @@ void DemoParser::WriteVDM( void ) const
 	const std::string filepath = writeToDir + filename + ".vdm";
 
 	// Check if we dare to overwrite an already existing file by this name
-	if( std::filesystem::exists( filepath ) )
+	if ( std::filesystem::exists( filepath ) )
 	{
 		std::ifstream vdm( filepath, std::ios::binary );
 
-		if( !vdm.is_open() )
+		if ( !vdm.is_open() )
 		{
 			printf( "%sFailed to check existing VDM file - writing aborted!\n", Settings()->BatchProcessingEnabled() ? " L " : "" );
 			return;
@@ -510,7 +512,7 @@ void DemoParser::WriteVDM( void ) const
 		std::getline( vdm, line );
 		vdm.close();
 
-		if( line != "demoactions" )
+		if ( line != "demoactions" )
 		{
 			printf( "%sCannot overwrite existing VDM file!\n", Settings()->BatchProcessingEnabled() ? " L " : "" );
 			return;
@@ -519,7 +521,7 @@ void DemoParser::WriteVDM( void ) const
 
 	std::ofstream vdm_output( filepath, std::ios::binary );
 
-	if( !vdm_output.is_open() )
+	if ( !vdm_output.is_open() )
 	{
 		printf( "%sFailed to write VDM file!\n", Settings()->BatchProcessingEnabled() ? " L " : "" );
 		return;
@@ -538,23 +540,23 @@ void DemoParser::WriteVDM( void ) const
 		<< "\t\tstarttick \"" << specSetupTicks << "\"\n"
 		<< "\t\tcommands \"alias gotonextfrag echo nonext";
 
-	if( !m_bIsPOV )
+	if ( !m_bIsPOV )
 	{
 		vdm_output << ";spec_menu hide;spec_mode;hidepanel all";
 	}
-	
+
 	vdm_output << "\"\n\t}\n";
-	
+
 	int gotoNextFragTick = specSetupTicks + 5;
 	bool bWroteCfg = false;
 
-	for( size_t iFrag = 0; iFrag < m_Frags.size(); ++iFrag )
+	for ( size_t iFrag = 0; iFrag < m_Frags.size(); ++iFrag )
 	{
 		const Frag &frag = m_Frags[ iFrag ];
 
 		const int nextFragTick = std::max( frag.GetStartTick() - 3 * GetTickRate(), specSetupTicks );
 
-		if( nextFragTick > gotoNextFragTick + GetTickRate() )
+		if ( nextFragTick > gotoNextFragTick + GetTickRate() )
 		{
 			vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
 				<< "\t\tfactory \"PlayCommands\"\n"
@@ -562,71 +564,94 @@ void DemoParser::WriteVDM( void ) const
 				<< "\t\tstarttick \"" << gotoNextFragTick << "\"\n"
 				<< "\t\tcommands \"demo_gototick " << nextFragTick << "\"\n\t}\n";
 		}
-		
+
 		gotoNextFragTick = frag.GetEndTick() + 2 * GetTickRate();
 
-		// GetTickCount can return 0, so in those cases m_iCurrentTick will hopefully contain the last actual tick
-		// If there will be problems, another variable might be required that saves the highest reached tick,
-		// in case m_iCurrentTick goes back down at the end of the demo
-		const int lastTick = GetTickCount() == 0 ? m_iCurrentTick : GetTickCount();
+		const int lastTick = GetTickCount() == 0 ? m_iHighestTick : GetTickCount();
 		assert( lastTick > 50 );
 
 		// Make sure next gototick doesn't happen after the demo ends
-		if( gotoNextFragTick > lastTick )
+		if ( gotoNextFragTick > lastTick )
 		{
 			gotoNextFragTick = std::max( frag.GetEndTick(), lastTick - 15 );
 		}
-
-		std::string cfgName = "__" + filename + (iFrag > 0 ? ("_" + std::to_string(iFrag + 1)) : "") + ".cfg";
 
 		vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
 			<< "\t\tfactory \"PlayCommands\"\n"
 			<< "\t\tname \"_onfragstart\"\n"
 			<< "\t\tstarttick \"" << nextFragTick + specSetupTicks << "\"\n"
-			<< "\t\tcommands \"alias gotonextfrag " << (iFrag < m_Frags.size() - 1 ? ("demo_gototick " + std::to_string( gotoNextFragTick + 10 )) : "echo nonext");
+			<< "\t\tcommands \"alias gotonextfrag " << ( iFrag < m_Frags.size() - 1 ? ( "demo_gototick " + std::to_string( gotoNextFragTick + 10 ) ) : "echo nonext" );
 
+		std::string cfgName;
 		bool bUseCfg = false;
-		if( !m_bIsPOV )
-		{
-			bool bNameHasSpaces = StrHasSpaces( frag.GetPlayername() );
 
-			if( Settings()->ShouldWriteVDMConfig() && bNameHasSpaces )
+		if ( !m_bIsPOV )
+		{
+			const bool bNameRequiresQuotationMarks = std::string( frag.GetPlayername() ).find_first_of( " (){}':;" ) != std::string::npos;
+
+			if ( Settings()->ShouldWriteVDMConfig() && bNameRequiresQuotationMarks )
 			{
-				vdm_output << ";exec " << cfgName << ((vdmSubDir.empty() || !_stricmp( vdmSubDir.c_str(), "cstrike" )) ? "" : (" */" + vdmSubDir));
+				cfgName = "__" + filename + ( iFrag > 0 ? ( "_" + std::to_string( iFrag + 1 ) ) : "" ) + ".cfg";
+				std::replace( cfgName.begin(), cfgName.end(), ' ', '_' );
+
+				vdm_output << ";exec " << cfgName << ( ( vdmSubDir.empty() || !_stricmp( vdmSubDir.c_str(), "cstrike" ) ) ? "" : ( " */" + vdmSubDir ) );
 				bUseCfg = true;
 			}
 			else
 			{
-				if( bNameHasSpaces )
+				if ( bNameRequiresQuotationMarks )
 					vdm_output << ";spec_player \\\"" << frag.GetPlayername() << "\\\"";
 				else
 					vdm_output << ";spec_player " << frag.GetPlayername();
 			}
 		}
-		
+
 		vdm_output << "\"\n\t}\n";
 
+		// Write frag tick and description to screen
+		// TODO FIX: this removes the demo name from screen when chaining...
+		/*
+		char szDesc[ 512 ];
+		frag.GetStringRepresentation( szDesc, sizeof( szDesc ), true );
+		const float holdtime = ceil( GetTimeBetweenTicks( nextFragTick, gotoNextFragTick ) ) + 1.f;
+
+		vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
+			<< "\t\tfactory \"TextMessageStart\"\n"
+			<< "\t\tname \"_fragdesc\"\n"
+			<< "\t\tstarttick \"" << nextFragTick + specSetupTicks << "\"\n"
+			<< "\t\tmessage \"Tick " << frag.GetRoundedTick() << ": " << szDesc << "\"\n"
+			<< "\t\tfont \"Trebuchet24\"\n"
+			<< "\t\tholdtime \"" << holdtime << "\"\n"
+			<< "\t\tx \"0.1\"\n"
+			<< "\t\ty \"0.12\"\n"
+			<< "\t\tr1 \"250\"\n"
+			<< "\t\tg1 \"60\"\n"
+			<< "\t\tb1 \"245\"\n"
+			<< "\t\ta1 \"255\"\n"
+			<< "\t}\n";
+		*/
+
 		// If this is the last frag, write a dummy command at the end so we can chain this easily later
-		if( iFrag == m_Frags.size() - 1 )
+		if ( iFrag == m_Frags.size() - 1 )
 		{
 			vdm_output << "\t\"" << actionNumber << "\"\n\t{\n"
 				<< "\t\tfactory \"PlayCommands\"\n"
 				<< "\t\tname \"_onlastfragend\"\n"
-				<< "\t\tstarttick \"" << std::min(gotoNextFragTick + GetTickRate(), lastTick - 15) << "\"\n"
+				<< "\t\tstarttick \"" << std::min( gotoNextFragTick + GetTickRate(), lastTick - 15 ) << "\"\n"
 				<< "\t\tcommands \"\"\n\t}\n";
 		}
 
 		// Write the cfg file
-		if( bUseCfg )
+		if ( bUseCfg )
 		{
-			if( !std::filesystem::exists( writeToDir + "cfg" ) )
+			if ( !std::filesystem::exists( writeToDir + "cfg" ) )
 			{
 				std::filesystem::create_directories( writeToDir + "cfg" );
 			}
 
 			std::ofstream cfg_output( writeToDir + "cfg\\" + cfgName, std::ios::binary );
 
-			if( !cfg_output.is_open() )
+			if ( !cfg_output.is_open() )
 			{
 				printf( "%sFailed to write VDM config file for frag %d!\n", Settings()->BatchProcessingEnabled() ? " L " : "", iFrag + 1 );
 				continue;
@@ -644,10 +669,10 @@ void DemoParser::WriteVDM( void ) const
 
 	vdm_output.close();
 
-	if( !Settings()->BatchProcessingEnabled() )
+	if ( !Settings()->BatchProcessingEnabled() )
 	{
 		const std::string writeDir = bShouldWriteToDemoDir ? "demo's" : "program";
-		if( vdmSubDir.empty() )
+		if ( vdmSubDir.empty() )
 		{
 			printf( "VDM file %s been written to %s folder\n\n", bWroteCfg ? "and its configs have" : "has", writeDir.c_str() );
 		}

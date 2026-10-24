@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // Comments from common/protocol.h
 

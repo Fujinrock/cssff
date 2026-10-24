@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #define MAX_STRING_TABLES	64
 

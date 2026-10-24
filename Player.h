@@ -21,7 +21,9 @@ struct angle_info_t
 	angle_info_t( int _tick )
 		: tick( _tick ),
 		pitch( INVALID_VIEWANGLE ),
-		yaw( INVALID_VIEWANGLE ) {}
+		yaw( INVALID_VIEWANGLE )
+	{
+	}
 
 	float pitch;
 	float yaw;

@@ -7,7 +7,7 @@
 #include <string>
 #include <cstdint>
 
-#define	CSSFF_NAME					"CSSFF v2.2.0"
+#define	CSSFF_NAME					"CSSFF v2.2.5"
 
 #define DEMO_HEADER_ID				"HL2DEMO"
 #define DEMO_HEADER_ID_GOLDSRC		"HLDEMO"
@@ -59,7 +59,6 @@ void RemoveFileNameFolders( std::string &filepath );
 bool FileHasExtension( const std::string &filename, const std::string &extension, bool allowPartial = false );
 bool IsValidDirectory( const char *szPath );
 bool IsValidDirectoryCharacter( char c );
-bool StrHasSpaces( const char *str );
 
 // Utility from the current demo parser that other classes need as well
 float GetTimeBetweenTicks( int, int );

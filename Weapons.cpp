@@ -7,7 +7,7 @@
 
 CSWeaponCategory GetWeaponCategory( CSWeaponID weapon )
 {
-	switch( weapon )
+	switch ( weapon )
 	{
 		default:
 			return CATEGORY_NONE;
@@ -84,7 +84,7 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 	std::unordered_map< CSWeaponID, int > weapons;
 	std::unordered_map< CSWeaponCategory, int > categories;
 
-	for( int i = 0; i < num_weapons; ++i )
+	for ( int i = 0; i < num_weapons; ++i )
 	{
 		CSWeaponCategory category = GetWeaponCategory( pWeapons[ i ] );
 
@@ -95,7 +95,7 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 	assert( weapons.size() > 0 && categories.size() > 0 );
 
 	// Only one weapon, return its ID and category
-	if( weapons.size() == 1 )
+	if ( weapons.size() == 1 )
 	{
 		outWeapon = weapons.begin()->first;
 		outCategory = categories.begin()->first;
@@ -105,7 +105,7 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 	// More than one weapon but same category in a 4k or 3k
 	// Return WEAPON_NONE and common category
 	// (+)5k will be checked later
-	if( categories.size() == 1 && num_weapons < 5 )
+	if ( categories.size() == 1 && num_weapons < 5 )
 	{
 		outWeapon = WEAPON_NONE;
 		outCategory = categories.begin()->first;
@@ -114,7 +114,7 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 
 	// If a 4k or 3k has more than 1 category or a (+)5k has more than 2 categories,
 	// use WEAPON_NONE and the general category
-	if( num_weapons < 5 || categories.size() > 2 )
+	if ( num_weapons < 5 || categories.size() > 2 )
 	{
 		outWeapon = WEAPON_NONE;
 		outCategory = CATEGORY_GENERAL;
@@ -126,11 +126,11 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 	outCategory = CATEGORY_GENERAL;
 
 	// If the other of two weapons did 4 of the kills, return it and its category
-	if( weapons.size() == 2 )
+	if ( weapons.size() == 2 )
 	{
-		for( const auto &[weapon, count] : weapons )
+		for ( const auto &[weapon, count] : weapons )
 		{
-			if( count == num_weapons - 1 )
+			if ( count == num_weapons - 1 )
 			{
 				outWeapon = weapon;
 				outCategory = GetWeaponCategory( weapon );
@@ -140,9 +140,9 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 	}
 
 	// The (+)5k has more than two weapons, so WEAPON_NONE will be returned, but check if we can still return a common category
-	for( const auto &[category, count] : categories )
+	for ( const auto &[category, count] : categories )
 	{
-		if( count >= num_weapons - 1 )
+		if ( count >= num_weapons - 1 )
 		{
 			outCategory = category;
 			return;
@@ -154,10 +154,10 @@ void GetMultiKillFragWeaponCategory( CSWeaponID *pWeapons, int num_weapons, CSWe
 
 CSWeaponID AliasToWeaponID( const char *alias )
 {
-	if( alias )
+	if ( alias )
 	{
-		for( int i = 0; s_WeaponAliasInfo[ i ] != nullptr; ++i )
-			if( !_stricmp( s_WeaponAliasInfo[i], alias ) )
+		for ( int i = 0; s_WeaponAliasInfo[ i ] != nullptr; ++i )
+			if ( !_stricmp( s_WeaponAliasInfo[ i ], alias ) )
 				return (CSWeaponID)i;
 	}
 
@@ -170,19 +170,19 @@ const char *WeaponIDToAlias( CSWeaponID weaponID )
 {
 	// NOTE: this returns prettier names that can't be found in s_WeaponAliasInfo for certain weapons
 
-	if( weaponID == WEAPON_MP5NAVY )
+	if ( weaponID == WEAPON_MP5NAVY )
 	{
 		return "MP5";
 	}
-	if( weaponID == WEAPON_ELITE )
+	if ( weaponID == WEAPON_ELITE )
 	{
 		return "dualies"; // "Dual elites" seems a bit too long
 	}
-	if( weaponID == WEAPON_WORLD || weaponID == WEAPON_NONE )
+	if ( weaponID == WEAPON_WORLD || weaponID == WEAPON_NONE )
 	{
 		return "unknown weapon";
 	}
-	if( weaponID >= WEAPON_NONE && weaponID < WEAPON_MAX )
+	if ( weaponID >= WEAPON_NONE && weaponID < WEAPON_MAX )
 	{
 		return s_WeaponAliasInfo[ weaponID ];
 	}
@@ -197,7 +197,7 @@ bool WeaponIsSniper( const char *szWeaponAlias )
 {
 	CSWeaponID weaponID = AliasToWeaponID( szWeaponAlias );
 
-	switch( weaponID )
+	switch ( weaponID )
 	{
 		case WEAPON_AWP:
 		case WEAPON_SCOUT:
@@ -215,7 +215,7 @@ bool WeaponUsesBullets( const char *szWeaponAlias )
 {
 	CSWeaponID weaponID = AliasToWeaponID( szWeaponAlias );
 
-	switch( weaponID )
+	switch ( weaponID )
 	{
 		case WEAPON_HEGRENADE:
 		case WEAPON_FLASHBANG:

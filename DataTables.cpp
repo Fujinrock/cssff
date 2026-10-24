@@ -1,30 +1,30 @@
-#include "DataTables.h"
+﻿#include "DataTables.h"
 #include "DemoParser.h"
 #include "Errors.h"
 
 void DemoParser::ParseDataTables( bf_read &reader )
 {
-	while( reader.ReadOneBit() )
+	while ( reader.ReadOneBit() )
 	{
 		SendTable table;
 		table.m_bNeedsDecoder = reader.ReadOneBit();
-		reader.ReadString( table.m_tableName, sizeof(table.m_tableName) );
+		reader.ReadString( table.m_tableName, sizeof( table.m_tableName ) );
 		table.m_nProps = reader.ReadUBitLong( 9 );
 
-		for( int i = 0; i < table.m_nProps; ++i )
+		for ( int i = 0; i < table.m_nProps; ++i )
 		{
 			SendProp prop;
 			prop.m_propType = (SendPropType)reader.ReadUBitLong( 5 );
-			reader.ReadString( prop.m_propName, sizeof(prop.m_propName) );
+			reader.ReadString( prop.m_propName, sizeof( prop.m_propName ) );
 			prop.m_flags = reader.ReadUBitLong( 13 );
 
-			if( prop.m_propType == DPT_DataTable || (prop.m_flags & SPROP_EXCLUDE) > 0 )
+			if ( prop.m_propType == DPT_DataTable || ( prop.m_flags & SPROP_EXCLUDE ) > 0 )
 			{
-				reader.ReadString( prop.m_dtname, sizeof(prop.m_dtname) );
+				reader.ReadString( prop.m_dtname, sizeof( prop.m_dtname ) );
 			}
 			else
 			{
-				switch( prop.m_propType )
+				switch ( prop.m_propType )
 				{
 					case DPT_String:
 					case DPT_Int:
@@ -54,7 +54,7 @@ void DemoParser::ParseDataTables( bf_read &reader )
 
 	short nServerClasses = reader.ReadShort();
 
-	if( !nServerClasses )
+	if ( !nServerClasses )
 		throw ParsingError_t( "no server classes in ParseDataTable" );
 
 	int nCCSPlayerID = -1;
@@ -72,7 +72,7 @@ void DemoParser::ParseDataTables( bf_read &reader )
 		reader.ReadString( entry.strDTName, sizeof( entry.strDTName ) );
 
 		// Keep track of CCSPlayer ID for later
-		if( nCCSPlayerID == -1 && !strcmp( entry.strName, "CCSPlayer" ) )
+		if ( nCCSPlayerID == -1 && !strcmp( entry.strName, "CCSPlayer" ) )
 		{
 			nCCSPlayerID = entry.nClassID;
 		}
@@ -88,13 +88,13 @@ void DemoParser::ParseDataTables( bf_read &reader )
 			}
 		}
 
-		if( entry.nDataTable == -1 )
+		if ( entry.nDataTable == -1 )
 			throw ParsingError_t( "data table for server class not found in ParseDataTable" );
 
 		m_ServerClasses.push_back( entry );
 	}
 
-	if( nCCSPlayerID == -1 )
+	if ( nCCSPlayerID == -1 )
 		throw ParsingError_t( "CCSPlayer server class not found" );
 
 	for ( int i = 0; i < nServerClasses; ++i )
@@ -108,7 +108,7 @@ void DemoParser::ParseDataTables( bf_read &reader )
 	// Perform integer log2() to set server class bits
 	int nTemp = nServerClasses;
 	m_iServerClassBits = 0;
-	while(nTemp >>= 1)
+	while ( nTemp >>= 1 )
 		++m_iServerClassBits;
 
 	m_iServerClassBits++;
@@ -120,9 +120,9 @@ SendTable *DemoParser::GetTableByName( const char *pName )
 {
 	for ( size_t i = 0; i < m_DataTables.size(); i++ )
 	{
-		if( strcmp( m_DataTables[ i ].m_tableName, pName ) == 0 )
+		if ( strcmp( m_DataTables[ i ].m_tableName, pName ) == 0 )
 		{
-			return &(m_DataTables[ i ]);
+			return &( m_DataTables[ i ] );
 		}
 	}
 	return nullptr;
@@ -136,7 +136,7 @@ SendTable *DemoParser::GetTableByClassID( uint32 iClassID )
 	{
 		if ( m_ServerClasses[ i ].nClassID == iClassID )
 		{
-			return &(m_DataTables[ m_ServerClasses[i].nDataTable ]);
+			return &( m_DataTables[ m_ServerClasses[ i ].nDataTable ] );
 		}
 	}
 	return nullptr;
@@ -148,7 +148,7 @@ void DemoParser::GatherExcludes( SendTable *pTable )
 {
 	for ( int iProp = 0; iProp < pTable->m_nProps; ++iProp )
 	{
-		const SendProp& sendProp = pTable->m_props[ iProp ];
+		const SendProp &sendProp = pTable->m_props[ iProp ];
 		if ( sendProp.m_flags & SPROP_EXCLUDE )
 		{
 			m_currentExcludes.emplace_back( sendProp.m_propName, sendProp.m_dtname, pTable->m_tableName );
@@ -167,11 +167,11 @@ void DemoParser::GatherExcludes( SendTable *pTable )
 
 // =====================================================================================================================================================================
 
-bool DemoParser::IsPropExcluded( SendTable *pTable, const SendProp& checkSendProp )
+bool DemoParser::IsPropExcluded( SendTable *pTable, const SendProp &checkSendProp )
 {
 	for ( size_t i = 0; i < m_currentExcludes.size(); ++i )
 	{
-		if( strcmp( pTable->m_tableName, m_currentExcludes[ i ].m_pDTName ) == 0
+		if ( strcmp( pTable->m_tableName, m_currentExcludes[ i ].m_pDTName ) == 0
 		&& strcmp( checkSendProp.m_propName, m_currentExcludes[ i ].m_pVarName ) == 0 )
 		{
 			return true;
@@ -186,7 +186,7 @@ void DemoParser::GatherProps_IterateProps( SendTable *pTable, int nServerClass, 
 {
 	for ( int iProp = 0; iProp < pTable->m_nProps; ++iProp )
 	{
-		const SendProp& sendProp = pTable->m_props[ iProp ];
+		const SendProp &sendProp = pTable->m_props[ iProp ];
 
 		if ( ( sendProp.m_flags & SPROP_INSIDEARRAY )
 		|| ( sendProp.m_flags & SPROP_EXCLUDE )
@@ -214,7 +214,7 @@ void DemoParser::GatherProps_IterateProps( SendTable *pTable, int nServerClass, 
 		{
 			if ( sendProp.m_propType == DPT_Array )
 			{
-				flattenedProps.emplace_back( &sendProp, &(pTable->m_props[ iProp - 1 ]) );
+				flattenedProps.emplace_back( &sendProp, &( pTable->m_props[ iProp - 1 ] ) );
 			}
 			else
 			{
@@ -257,7 +257,7 @@ void DemoParser::FlattenDataTable( int nServerClass )
 	{
 		FlattenedPropEntry p = flattenedProps[ i ];
 
-		if ( (p.m_prop->m_flags & SPROP_CHANGES_OFTEN) != 0 )
+		if ( ( p.m_prop->m_flags & SPROP_CHANGES_OFTEN ) != 0 )
 		{
 			flattenedProps[ i ] = flattenedProps[ start ];
 			flattenedProps[ start ] = p;
@@ -272,34 +272,34 @@ void DemoParser::SavePlayerPropIndices( int nCCSPlayerID )
 {
 	std::vector< FlattenedPropEntry > &flattenedProps = m_ServerClasses[ nCCSPlayerID ].flattenedProps;
 
-	for( size_t i = 0; i < flattenedProps.size(); ++i )
+	for ( size_t i = 0; i < flattenedProps.size(); ++i )
 	{
-		if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_angEyeAngles[0]" ) )
+		if ( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_angEyeAngles[0]" ) )
 		{
 			m_PropIndices.uPitchAnglePropIndex = i;
 		}
-		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_angEyeAngles[1]" ) )
+		else if ( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_angEyeAngles[1]" ) )
 		{
 			m_PropIndices.uYawAnglePropIndex = i;
 		}
-		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_flFlashDuration" ) )
+		else if ( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_flFlashDuration" ) )
 		{
 			m_PropIndices.uFlashDurationPropIndex = i;
 		}
-		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_fFlags" ) )
+		else if ( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_fFlags" ) )
 		{
 			m_PropIndices.uFlagsPropIndex = i;
 		}
-		else if( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_vecOrigin" ) )
+		else if ( !strcmp( flattenedProps[ i ].m_prop->m_propName, "m_vecOrigin" ) )
 		{
-			if( m_PropIndices.uOriginPropsFound < 2 )
+			if ( m_PropIndices.uOriginPropsFound < 2 )
 				m_PropIndices.uOriginPropIndex[ m_PropIndices.uOriginPropsFound ] = i;
 
 			++m_PropIndices.uOriginPropsFound;
 		}
 	}
 
-	if( !m_PropIndices.uPitchAnglePropIndex
+	if ( !m_PropIndices.uPitchAnglePropIndex
 	|| !m_PropIndices.uYawAnglePropIndex
 	|| !m_PropIndices.uFlashDurationPropIndex
 	|| !m_PropIndices.uFlagsPropIndex

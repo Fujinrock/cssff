@@ -26,29 +26,29 @@
 
 // Precalculated bit masks for WriteUBitLong. Using these tables instead of 
 // doing the calculations gives a 33% speedup in WriteUBitLong.
-unsigned long g_BitWriteMasks[32][33];
+unsigned long g_BitWriteMasks[ 32 ][ 33 ];
 
 // (1 << i) - 1
-unsigned long g_ExtraMasks[32];
+unsigned long g_ExtraMasks[ 32 ];
 
 class CBitWriteMasksInit
 {
 public:
 	CBitWriteMasksInit()
 	{
-		for( unsigned int startbit=0; startbit < 32; startbit++ )
+		for ( unsigned int startbit = 0; startbit < 32; startbit++ )
 		{
-			for( unsigned int nBitsLeft=0; nBitsLeft < 33; nBitsLeft++ )
+			for ( unsigned int nBitsLeft = 0; nBitsLeft < 33; nBitsLeft++ )
 			{
 				unsigned int endbit = startbit + nBitsLeft;
-				g_BitWriteMasks[startbit][nBitsLeft] = (1 << startbit) - 1;
-				if(endbit < 32)
-					g_BitWriteMasks[startbit][nBitsLeft] |= ~((1 << endbit) - 1);
+				g_BitWriteMasks[ startbit ][ nBitsLeft ] = ( 1 << startbit ) - 1;
+				if ( endbit < 32 )
+					g_BitWriteMasks[ startbit ][ nBitsLeft ] |= ~( ( 1 << endbit ) - 1 );
 			}
 		}
 
-		for ( unsigned int maskBit=0; maskBit < 32; maskBit++ )
-			g_ExtraMasks[maskBit] = (1 << maskBit) - 1;
+		for ( unsigned int maskBit = 0; maskBit < 32; maskBit++ )
+			g_ExtraMasks[ maskBit ] = ( 1 << maskBit ) - 1;
 	}
 };
 CBitWriteMasksInit g_BitWriteMasksInit;
@@ -81,9 +81,9 @@ bf_read::bf_read( const char *pDebugName, const void *pData, int nBytes, int nBi
 void bf_read::StartReading( const void *pData, int nBytes, int iStartBit, int nBits )
 {
 	// Make sure we're dword aligned.
-	assert(((unsigned long)pData & 3) == 0);
+	assert( ( (unsigned long)pData & 3 ) == 0 );
 
-	m_pData = (unsigned char*)pData;
+	m_pData = (unsigned char *)pData;
 	m_nDataBytes = nBytes;
 
 	if ( nBits == -1 )
@@ -92,7 +92,7 @@ void bf_read::StartReading( const void *pData, int nBytes, int iStartBit, int nB
 	}
 	else
 	{
-		assert( nBits <= nBytes*8 );
+		assert( nBits <= nBytes * 8 );
 		m_nDataBits = nBits;
 	}
 
@@ -106,7 +106,7 @@ void bf_read::Reset()
 	m_bOverflow = false;
 }
 
-const char* bf_read::GetDebugName()
+const char *bf_read::GetDebugName()
 {
 	return m_pDebugName;
 }
@@ -116,56 +116,56 @@ void bf_read::SetDebugName( const char *pName )
 	m_pDebugName = pName;
 }
 
-unsigned int bf_read::CheckReadUBitLong(int numbits)
+unsigned int bf_read::CheckReadUBitLong( int numbits )
 {
 	// Ok, just read bits out.
 	int i, nBitValue;
 	unsigned int r = 0;
 
-	for(i=0; i < numbits; i++)
+	for ( i = 0; i < numbits; i++ )
 	{
 		nBitValue = ReadOneBitNoCheck();
 		r |= nBitValue << i;
 	}
 	m_iCurBit -= numbits;
-	
+
 	return r;
 }
 
-bool bf_read::ReadBits(void *pOutData, int nBits)
+bool bf_read::ReadBits( void *pOutData, int nBits )
 {
-	unsigned char *pOut = (unsigned char*)pOutData;
+	unsigned char *pOut = (unsigned char *)pOutData;
 	int nBitsLeft = nBits;
 
-	
+
 	// Get output dword-aligned.
-	while(((unsigned long)pOut & 3) != 0 && nBitsLeft >= 8)
+	while ( ( (unsigned long)pOut & 3 ) != 0 && nBitsLeft >= 8 )
 	{
-		*pOut = (unsigned char)ReadUBitLong(8);
+		*pOut = (unsigned char)ReadUBitLong( 8 );
 		++pOut;
 		nBitsLeft -= 8;
 	}
 
 	// Read dwords.
-	while(nBitsLeft >= 32)
+	while ( nBitsLeft >= 32 )
 	{
-		*((unsigned long*)pOut) = ReadUBitLong(32);
-		pOut += sizeof(uint32_t);
+		*( (unsigned long *)pOut ) = ReadUBitLong( 32 );
+		pOut += sizeof( uint32_t );
 		nBitsLeft -= 32;
 	}
 
 	// Read the remaining bytes.
-	while(nBitsLeft >= 8)
+	while ( nBitsLeft >= 8 )
 	{
-		*pOut = ReadUBitLong(8);
+		*pOut = ReadUBitLong( 8 );
 		++pOut;
 		nBitsLeft -= 8;
 	}
-	
+
 	// Read the remaining bits.
-	if(nBitsLeft)
+	if ( nBitsLeft )
 	{
-		*pOut = ReadUBitLong(nBitsLeft);
+		*pOut = ReadUBitLong( nBitsLeft );
 	}
 
 	return !IsOverflowed();
@@ -180,7 +180,7 @@ float bf_read::ReadBitAngle( int numbits )
 	shift = (float)( 1 << numbits );
 
 	i = ReadUBitLong( numbits );
-	fReturn = (float)i * (360.0 / shift);
+	fReturn = (float)i * ( 360.0 / shift );
 
 	return fReturn;
 }
@@ -198,7 +198,7 @@ unsigned int bf_read::PeekUBitLong( int numbits )
 	savebf = *this;  // Save current state info
 
 	r = 0;
-	for(i=0; i < numbits; i++)
+	for ( i = 0; i < numbits; i++ )
 	{
 		nBitValue = ReadOneBit();
 
@@ -208,7 +208,7 @@ unsigned int bf_read::PeekUBitLong( int numbits )
 			r |= 1 << i;
 		}
 	}
-	
+
 	*this = savebf;
 
 #ifdef BIT_VERBOSE
@@ -223,13 +223,13 @@ int bf_read::ReadSBitLong( int numbits )
 {
 	int r, sign;
 
-	r = ReadUBitLong(numbits - 1);
+	r = ReadUBitLong( numbits - 1 );
 
 	// Note: it does this wierdness here so it's bit-compatible with regular integer data in the buffer.
 	// (Some old code writes direct integers right into the buffer).
 	sign = ReadOneBit();
-	if(sign)
-		r = -((1 << (numbits-1)) - r);
+	if ( sign )
+		r = -( ( 1 << ( numbits - 1 ) ) - r );
 
 	return r;
 }
@@ -238,31 +238,31 @@ unsigned int bf_read::ReadUBitVar()
 {
 	int bits = 0; // how many bits are used to encode delta offset
 
-		// how many bits do we use
+	// how many bits do we use
 	while ( ReadOneBit() == 0 && !IsOverflowed() )
 		bits++;
 
-	unsigned int data = (1<<bits)-1;
-	
+	unsigned int data = ( 1 << bits ) - 1;
+
 	// read the value
-	if ( bits > 0)
+	if ( bits > 0 )
 		data += ReadUBitLong( bits );
 
 	return data;
 }
 
-unsigned int bf_read::ReadBitLong(int numbits, bool bSigned)
+unsigned int bf_read::ReadBitLong( int numbits, bool bSigned )
 {
-	if(bSigned)
-		return (unsigned int)ReadSBitLong(numbits);
+	if ( bSigned )
+		return (unsigned int)ReadSBitLong( numbits );
 	else
-		return ReadUBitLong(numbits);
+		return ReadUBitLong( numbits );
 }
 
 // Basic Coordinate Routines (these contain bit-field size AND fixed point scaling constants)
-float bf_read::ReadBitCoord (void)
+float bf_read::ReadBitCoord( void )
 {
-	int		intval=0,fractval=0,signbit=0;
+	int		intval = 0, fractval = 0, signbit = 0;
 	float	value = 0.0;
 
 
@@ -290,7 +290,7 @@ float bf_read::ReadBitCoord (void)
 		}
 
 		// Calculate the correct floating point value
-		value = intval + ((float)fractval * COORD_RESOLUTION);
+		value = intval + ( (float)fractval * COORD_RESOLUTION );
 
 		// Fixup the sign if negative.
 		if ( signbit )
@@ -300,7 +300,7 @@ float bf_read::ReadBitCoord (void)
 	return value;
 }
 
-void bf_read::ReadBitVec3Coord( Vector& fa )
+void bf_read::ReadBitVec3Coord( Vector &fa )
 {
 	int		xflag, yflag, zflag;
 
@@ -309,18 +309,18 @@ void bf_read::ReadBitVec3Coord( Vector& fa )
 	fa.Init( 0, 0, 0 );
 
 	xflag = ReadOneBit();
-	yflag = ReadOneBit(); 
+	yflag = ReadOneBit();
 	zflag = ReadOneBit();
 
 	if ( xflag )
-		fa[0] = ReadBitCoord();
+		fa[ 0 ] = ReadBitCoord();
 	if ( yflag )
-		fa[1] = ReadBitCoord();
+		fa[ 1 ] = ReadBitCoord();
 	if ( zflag )
-		fa[2] = ReadBitCoord();
+		fa[ 2 ] = ReadBitCoord();
 }
 
-float bf_read::ReadBitNormal (void)
+float bf_read::ReadBitNormal( void )
 {
 	// Read the sign bit
 	int	signbit = ReadOneBit();
@@ -338,35 +338,35 @@ float bf_read::ReadBitNormal (void)
 	return value;
 }
 
-void bf_read::ReadBitVec3Normal( Vector& fa )
+void bf_read::ReadBitVec3Normal( Vector &fa )
 {
 	int xflag = ReadOneBit();
-	int yflag = ReadOneBit(); 
+	int yflag = ReadOneBit();
 
-	if (xflag)
-		fa[0] = ReadBitNormal();
+	if ( xflag )
+		fa[ 0 ] = ReadBitNormal();
 	else
-		fa[0] = 0.0f;
+		fa[ 0 ] = 0.0f;
 
-	if (yflag)
-		fa[1] = ReadBitNormal();
+	if ( yflag )
+		fa[ 1 ] = ReadBitNormal();
 	else
-		fa[1] = 0.0f;
+		fa[ 1 ] = 0.0f;
 
 	// The first two imply the third (but not its sign)
 	int znegative = ReadOneBit();
 
-	float fafafbfb = fa[0] * fa[0] + fa[1] * fa[1];
-	if (fafafbfb < 1.0f)
-		fa[2] = sqrt( 1.0f - fafafbfb );
+	float fafafbfb = fa[ 0 ] * fa[ 0 ] + fa[ 1 ] * fa[ 1 ];
+	if ( fafafbfb < 1.0f )
+		fa[ 2 ] = sqrt( 1.0f - fafafbfb );
 	else
-		fa[2] = 0.0f;
+		fa[ 2 ] = 0.0f;
 
-	if (znegative)
-		fa[2] = -fa[2];
+	if ( znegative )
+		fa[ 2 ] = -fa[ 2 ];
 }
 
-void bf_read::ReadBitAngles( QAngle& fa )
+void bf_read::ReadBitAngles( QAngle &fa )
 {
 	Vector tmp;
 	ReadBitVec3Coord( tmp );
@@ -375,40 +375,40 @@ void bf_read::ReadBitAngles( QAngle& fa )
 
 int bf_read::ReadChar()
 {
-	return ReadSBitLong(sizeof(int8_t) << 3);
+	return ReadSBitLong( sizeof( int8_t ) << 3 );
 }
 
 int bf_read::ReadByte()
 {
-	return ReadUBitLong(sizeof(uint8_t) << 3);
+	return ReadUBitLong( sizeof( uint8_t ) << 3 );
 }
 
 int bf_read::ReadShort()
 {
-	return ReadSBitLong(sizeof(int16_t) << 3);
+	return ReadSBitLong( sizeof( int16_t ) << 3 );
 }
 
 int bf_read::ReadWord()
 {
-	return ReadUBitLong(sizeof(uint16_t) << 3);
+	return ReadUBitLong( sizeof( uint16_t ) << 3 );
 }
 
 long bf_read::ReadLong()
 {
-	return ReadSBitLong(sizeof(int32_t) << 3);
+	return ReadSBitLong( sizeof( int32_t ) << 3 );
 }
 
 float bf_read::ReadFloat()
 {
 	float ret;
-	assert( sizeof(ret) == 4 );
-	ReadBits(&ret, 32);
+	assert( sizeof( ret ) == 4 );
+	ReadBits( &ret, 32 );
 	return ret;
 }
 
-bool bf_read::ReadBytes(void *pOut, int nBytes)
+bool bf_read::ReadBytes( void *pOut, int nBytes )
 {
-	return ReadBits(pOut, nBytes << 3);
+	return ReadBits( pOut, nBytes << 3 );
 }
 
 bool bf_read::ReadString( char *pStr, int maxLen, bool bLine, int *pOutNumChars )
@@ -417,7 +417,7 @@ bool bf_read::ReadString( char *pStr, int maxLen, bool bLine, int *pOutNumChars 
 
 	bool bTooSmall = false;
 	int iChar = 0;
-	while(1)
+	while ( 1 )
 	{
 		char val = ReadChar();
 		if ( val == 0 )
@@ -425,9 +425,9 @@ bool bf_read::ReadString( char *pStr, int maxLen, bool bLine, int *pOutNumChars 
 		else if ( bLine && val == '\n' )
 			break;
 
-		if ( iChar < (maxLen-1) )
+		if ( iChar < ( maxLen - 1 ) )
 		{
-			pStr[iChar] = val;
+			pStr[ iChar ] = val;
 			++iChar;
 		}
 		else
@@ -438,23 +438,23 @@ bool bf_read::ReadString( char *pStr, int maxLen, bool bLine, int *pOutNumChars 
 
 	// Make sure it's null-terminated.
 	assert( iChar < maxLen );
-	pStr[iChar] = 0;
+	pStr[ iChar ] = 0;
 
 	if ( pOutNumChars )
 		*pOutNumChars = iChar;
 
 	return !IsOverflowed() && !bTooSmall;
 }
-	
-bool bf_read::Seek(int iBit)
+
+bool bf_read::Seek( int iBit )
 {
-	if(iBit < 0)
+	if ( iBit < 0 )
 	{
 		SetOverflowFlag();
 		m_iCurBit = m_nDataBits;
 		return false;
 	}
-	else if(iBit > m_nDataBits)
+	else if ( iBit > m_nDataBits )
 	{
 		SetOverflowFlag();
 		m_iCurBit = m_nDataBits;

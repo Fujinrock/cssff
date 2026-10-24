@@ -13,8 +13,8 @@ struct ParsingError_t;
 /**
  * Different ways the parsing process can be terminated
  */
-enum ParsingResult 
-{ 
+enum ParsingResult
+{
 	DONE,
 	ERROR,
 	ABORTED
@@ -88,14 +88,14 @@ private:
 
 
 	// ===== String tables =========================================================================================
-	void CreateStringTable( const char *name, int max_entries, int user_data_size, int user_data_size_bits, bool user_data_fixed_size );
-	void ParseStringTableUpdate( bf_read &reader, int entries, int max_entries, int user_data_size, int user_data_size_bits, bool user_data_fixed_size, bool is_user_info );
+	const StringTableData_t *CreateStringTable( const char *name, int max_entries, int user_data_size, int user_data_size_bits, bool user_data_fixed_size );
+	void ParseStringTableUpdate( bf_read &reader, int entries, const StringTableData_t *pTable );
 	const StringTableData_t *GetStringTableData( uint32 tableID );
 
 	uint32				m_iNumStringTables;
 	StringTableData_t	m_StringTables[ MAX_STRING_TABLES ];
 
-	
+
 	// ===== Data tables ===========================================================================================
 	void ParseDataTables( bf_read &reader );
 	SendTable *GetTableByName( const char *pName );
@@ -126,7 +126,7 @@ private:
 
 
 	// ===== Entities ==============================================================================================
-	bool ProcessPacketEntities( bf_read &reader, int maxentries, int updatedentries, int datalength, bool isdelta, int deltafrom, int baseline, bool updatebaseline );
+	bool ProcessPacketEntities( bf_read &reader, int updatedentries, bool isdelta );
 	bool ReadNewEntity( bf_read &reader, EntityEntry *pEntity );
 	EntityEntry *FindEntity( int nEntity );
 	EntityEntry *AddEntity( int nEntity, uint32 uClass, uint32 uSerialNum );
@@ -168,6 +168,7 @@ private:
 	float				m_fTickInterval;				///< # of seconds between ticks
 	int					m_iTickRate;					///< # of ticks per second
 	int					m_iCurrentTick;					///< The tick the parser is currently at
+	int					m_iHighestTick;					///< The highest tick reached on the demo
 	int					m_iNewRoundTick;				///< Tick when the current round started
 
 	bool				m_bUse5BitStringTableIndices;	///< Really old demos have 4 bit string table indices

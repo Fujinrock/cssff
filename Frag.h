@@ -122,17 +122,16 @@ public:
 
 	bool IsValidFrag( void ) const;
 
-	void GetStringRepresentation( char *buffer, size_t buffer_size ) const;
+	void GetStringRepresentation( char *buffer, size_t buffer_size, bool compact = false ) const;
 
+	// Get a nice rounded tick for string
+	int GetRoundedTick( void ) const;
 	int GetStartTick( void ) const;
 	int GetEndTick( void ) const;
 
 private:
 	// Get the amount of enemy kills that the descriptors in this frag imply
 	int GetImpliedKillCount( void ) const;
-
-	// Get a nice rounded tick for string
-	int GetRoundedTick( void ) const;
 
 	enum { TEAM_T = 2, TEAM_CT = 3 };
 

@@ -16,9 +16,9 @@ Player::Player( const Player &other )
 
 void Player::CopyFrom( const Player &src )
 {
-	strcpy_s( name, sizeof(name), src.name);
-	strcpy_s( guid, sizeof(guid), src.guid );
-	strcpy_s( friendsName, sizeof(friendsName), src.friendsName );
+	strcpy_s( name, sizeof( name ), src.name );
+	strcpy_s( guid, sizeof( guid ), src.guid );
+	strcpy_s( friendsName, sizeof( friendsName ), src.friendsName );
 
 	userID = src.userID;
 	friendsID = src.friendsID;
@@ -26,8 +26,8 @@ void Player::CopyFrom( const Player &src )
 	ishltv = src.ishltv;
 	filesDownloaded = src.filesDownloaded;
 
-	for( int i = 0; i < MAX_CUSTOM_FILES; ++i )
-		customfiles[i] = src.customfiles[i];
+	for ( int i = 0; i < MAX_CUSTOM_FILES; ++i )
+		customfiles[ i ] = src.customfiles[ i ];
 
 	// These need to be copied too, because the copy constructor is used when adding new players
 	entityIndex = src.entityIndex;
@@ -94,27 +94,27 @@ void Player::AddYawAngle( float yaw )
 
 angle_info_t *Player::GetAnglesByTick( int tick )
 {
-	for( auto it = viewangles.begin(); it != viewangles.end(); ++it )
+	for ( auto it = viewangles.begin(); it != viewangles.end(); ++it )
 	{
-		if( it->tick == tick )
-			return &(*it);
+		if ( it->tick == tick )
+			return &( *it );
 	}
 
 	// Delete expired angles
 	const int max_duration = Settings()->GetMaxFlickshotDuration();
-	const int flick_ticks = (int)ceil( GetTickRate() * (max_duration / 1000.f) );
+	const int flick_ticks = (int)ceil( GetTickRate() * ( max_duration / 1000.f ) );
 
 	bool exceeds_max = false;
-	for( auto it = viewangles.begin(); it != viewangles.end(); ++it )
+	for ( auto it = viewangles.begin(); it != viewangles.end(); ++it )
 	{
 		// We leave one expired angle info, because the angles might not be updated every tick,
 		// so the flick end tick might be between the last valid and the first expired infos
-		if( exceeds_max )
+		if ( exceeds_max )
 		{
 			viewangles.erase( it, viewangles.end() );
 			break;
 		}
-		else if( GetCurrentTick() - it->tick >= flick_ticks )
+		else if ( GetCurrentTick() - it->tick >= flick_ticks )
 		{
 			exceeds_max = true;
 		}
@@ -130,11 +130,11 @@ angle_info_t *Player::GetAnglesByTick( int tick )
 
 Player *DemoParser::FindPlayerByEntityIndex( int entityIndex )
 {
-	for( auto it = m_Players.begin(); it != m_Players.end(); ++it )
+	for ( auto it = m_Players.begin(); it != m_Players.end(); ++it )
 	{
-		if( it->entityIndex == entityIndex )
+		if ( it->entityIndex == entityIndex )
 		{
-			return &(*it);
+			return &( *it );
 		}
 	}
 
@@ -145,11 +145,11 @@ Player *DemoParser::FindPlayerByEntityIndex( int entityIndex )
 
 Player *DemoParser::FindPlayerByUserId( int userId )
 {
-	for( auto it = m_Players.begin(); it != m_Players.end(); ++it )
+	for ( auto it = m_Players.begin(); it != m_Players.end(); ++it )
 	{
-		if( it->userID == userId )
+		if ( it->userID == userId )
 		{
-			return &(*it);
+			return &( *it );
 		}
 	}
 
@@ -165,16 +165,16 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 {
 	auto it = angles.begin();
 
-	if( pFlickAmount )
+	if ( pFlickAmount )
 		*pFlickAmount = 0.f;
 
-	if( it == angles.end() )
+	if ( it == angles.end() )
 		return false;
 
 	// Find the last valid angle on this axis (if it wasn't updated after, it's assumed to be the same)
-	while( (axis == YAW? it->yaw : it->pitch) == INVALID_VIEWANGLE )
+	while ( ( axis == YAW ? it->yaw : it->pitch ) == INVALID_VIEWANGLE )
 	{
-		if( ++it == angles.end() )
+		if ( ++it == angles.end() )
 			return false;
 	}
 
@@ -185,7 +185,7 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 	int iLog2Multiplier;
 
 	// Scale values per axis, since the range of movement is different
-	if( axis == PITCH )
+	if ( axis == PITCH )
 	{
 		fFlickshotAbsoluteMinAngle = 25.f;
 		fFlickshotAbsoluteMaxMinAngle = 110.f;
@@ -207,15 +207,15 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 	}
 
 	// Distance scaling of min angle
-	fMinFlickAngle = (fFlickBaseAngle - (float)Log2( fDistance/7.5f ) * iLog2Multiplier) * fMinAngleMod;
+	fMinFlickAngle = ( fFlickBaseAngle - (float)Log2( fDistance / 7.5f ) * iLog2Multiplier ) * fMinAngleMod;
 
 	// Clamp min angle
-	if( fMinFlickAngle < fFlickshotAbsoluteMinAngle )
+	if ( fMinFlickAngle < fFlickshotAbsoluteMinAngle )
 		fMinFlickAngle = fFlickshotAbsoluteMinAngle;
-	else if( fMinFlickAngle > fFlickshotAbsoluteMaxMinAngle )
+	else if ( fMinFlickAngle > fFlickshotAbsoluteMaxMinAngle )
 		fMinFlickAngle = fFlickshotAbsoluteMaxMinAngle;
 
-	float fPrevAngle = (axis == YAW)? it->yaw : it->pitch;
+	float fPrevAngle = ( axis == YAW ) ? it->yaw : it->pitch;
 
 	// Reset to newest tick to count checked ticks correctly
 	it = angles.begin();
@@ -225,13 +225,13 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 	int iTicksChecked = 0;			// How many ticks' angle delta has been added to total angle delta
 
 	// Check if the player's view moved enough to be a flick
-	for( ++it; it != angles.end(); ++it )
+	for ( ++it; it != angles.end(); ++it )
 	{
-		float fNewAngle = (axis == YAW)? it->yaw : it->pitch;
+		float fNewAngle = ( axis == YAW ) ? it->yaw : it->pitch;
 		const int iTickDelta = iLastTick - it->tick; // How many ticks' angles are we adding on this update
 
 		// Was there delta on this tick?
-		if( fNewAngle == INVALID_VIEWANGLE )
+		if ( fNewAngle == INVALID_VIEWANGLE )
 		{
 			iTicksChecked += iLastTick - it->tick;
 			iLastTick = it->tick;
@@ -241,17 +241,17 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 		float fDelta = fPrevAngle - fNewAngle;
 
 		// Normalize the angle difference
-		if( fDelta > 180.f )
+		if ( fDelta > 180.f )
 			fDelta -= 360.f;
-		else if( fDelta < -180.f )
+		else if ( fDelta < -180.f )
 			fDelta += 360.f;
 
 		// If we went past max flick ticks, scale delta amount by the % of valid ticks
-		if( iTicksChecked + iTickDelta > iMaxFlickTicks )
+		if ( iTicksChecked + iTickDelta > iMaxFlickTicks )
 		{
 			int iValidTicks = iMaxFlickTicks - iTicksChecked;
 
-			fDelta *= ((float)iValidTicks / iTickDelta);
+			fDelta *= ( (float)iValidTicks / iTickDelta );
 		}
 
 		fTotalAngleDelta += fDelta;
@@ -260,14 +260,14 @@ bool AngleDeltaIsFlickOnAxis( axis_t axis, int iMaxFlickTicks, float fDistance, 
 		iTicksChecked += iTickDelta;
 		iLastTick = it->tick;
 
-		if( iTicksChecked >= iMaxFlickTicks )
+		if ( iTicksChecked >= iMaxFlickTicks )
 			break;
 	}
 
-	if( pFlickAmount )
+	if ( pFlickAmount )
 		*pFlickAmount = fTotalAngleDelta;
 
-	return fabs(fTotalAngleDelta) >= fMinFlickAngle;
+	return fabs( fTotalAngleDelta ) >= fMinFlickAngle;
 }
 
 // =====================================================================================================================================================================
@@ -276,23 +276,23 @@ bool KillIsFlickshot( const Player *player, kill_info_t &kill )
 {
 	CSWeaponCategory category = GetWeaponCategory( kill.weaponID );
 
-	if( category == CATEGORY_GRENADE )
+	if ( category == CATEGORY_GRENADE )
 		return false;
 
 	const int flick_duration_ms = Settings()->GetFlickshotDurationForWeapon( kill.weaponID );
 	const float min_angle_mod = Settings()->GetFlickshotMinAngleModForWeapon( kill.weaponID );
 
-	if( flick_duration_ms <= 0 )
+	if ( flick_duration_ms <= 0 )
 		return false;
 
 	// Flick duration in ticks
-	int flick_ticks = (int)ceil( GetTickRate() * (flick_duration_ms / 1000.f) );
+	int flick_ticks = (int)ceil( GetTickRate() * ( flick_duration_ms / 1000.f ) );
 
 	// Check on both axes
-	if( AngleDeltaIsFlickOnAxis( YAW, flick_ticks, kill.distance, min_angle_mod, player->viewangles, &kill.flickangle ) )
+	if ( AngleDeltaIsFlickOnAxis( YAW, flick_ticks, kill.distance, min_angle_mod, player->viewangles, &kill.flickangle ) )
 		return true;
 
-	if( AngleDeltaIsFlickOnAxis( PITCH, flick_ticks, kill.distance, min_angle_mod, player->viewangles, &kill.flickangle ) )
+	if ( AngleDeltaIsFlickOnAxis( PITCH, flick_ticks, kill.distance, min_angle_mod, player->viewangles, &kill.flickangle ) )
 		return true;
 
 	return false;
@@ -302,7 +302,7 @@ bool KillIsFlickshot( const Player *player, kill_info_t &kill )
 
 void DemoParser::DoPlayersPostCheck()
 {
-	for( auto it = m_PlayerPostCheckData.begin(); it != m_PlayerPostCheckData.end(); ++it )
+	for ( auto it = m_PlayerPostCheckData.begin(); it != m_PlayerPostCheckData.end(); ++it )
 	{
 		PostCheckData_t &data = *it;
 		Player *player = data.pPlayer;
@@ -320,47 +320,47 @@ void DemoParser::DoPlayersPostCheck()
 		CSWeaponCategory category = CATEGORY_NONE;
 #endif
 
-		for( int k = num_kills-1; k >= 0; --k )
+		for ( int k = num_kills - 1; k >= 0; --k )
 		{
 			kill_info_t &kill = player->GetKill( k );
 
-			if( kill.tick < data.nKillTick )
+			if ( kill.tick < data.nKillTick )
 				break;
 
-			if( kill.tick != data.nKillTick )
+			if ( kill.tick != data.nKillTick )
 				continue;
 
 			CSWeaponCategory curCategory = GetWeaponCategory( kill.weaponID );
 
-			if( curCategory == CATEGORY_GRENADE || curCategory == CATEGORY_KNIFE )
+			if ( curCategory == CATEGORY_GRENADE || curCategory == CATEGORY_KNIFE )
 				continue;
 #ifdef _DEBUG
 			// Shouldn't be able to enter here with a different category than before
-			assert( (category == CATEGORY_NONE) || (category == curCategory) );
+			assert( ( category == CATEGORY_NONE ) || ( category == curCategory ) );
 			category = curCategory;
 #endif
-			if( kill.midair_status != ON_GROUND )
+			if ( kill.midair_status != ON_GROUND )
 			{
 				min_air_time = Settings()->GetMinPostKillAirTimeForWeapon( kill.weaponID );
-				if( min_air_time < 0.0 )
+				if ( min_air_time < 0.0 )
 					min_air_time = 0.0;
 			}
 
-			if( bCheckedMidAir )
+			if ( bCheckedMidAir )
 			{
 				kill.midair_status = midair_status;
 			}
-			else if( kill.midair_status != ON_GROUND && !kill.spectated ) // It had to be a mid-air kill previously, too
+			else if ( kill.midair_status != ON_GROUND && !kill.spectated ) // It had to be a mid-air kill previously, too
 			{
 				EntityEntry *pEntAttacker = FindEntity( player->entityIndex );
 				PropEntry *prop = pEntAttacker->FindProp( "m_fFlags" );
 
 				// This CAN be NULL, if the flags never had to be updated before a kill was made
-				if( prop )
+				if ( prop )
 				{
 					uint32 flags = prop->m_pPropValue->m_value.m_int;
 
-					if( !(flags & FL_ONGROUND) )
+					if ( !( flags & FL_ONGROUND ) )
 					{
 						// Don't change jumpshot to a ladderkill or the other way around
 						midair_status = kill.midair_status;
@@ -372,15 +372,15 @@ void DemoParser::DoPlayersPostCheck()
 			}
 
 			// Flicks are only checked/set on the first check
-			if( !data.bFlickChecked )
+			if ( !data.bFlickChecked )
 			{
-				if( is_flickshot )
+				if ( is_flickshot )
 				{
 					kill.flickshot = true;
 					kill.flickangle = flickangle;
 					continue;
 				}
-				else if( !bCheckedFlick )
+				else if ( !bCheckedFlick )
 				{
 					is_flickshot = KillIsFlickshot( player, kill );
 					kill.flickshot = is_flickshot;
@@ -394,11 +394,11 @@ void DemoParser::DoPlayersPostCheck()
 
 		data.bFlickChecked = true;
 
-		if( midair_status == ON_GROUND || deltatime >= min_air_time )
+		if ( midair_status == ON_GROUND || deltatime >= min_air_time )
 		{
 			it = m_PlayerPostCheckData.erase( it );
 
-			if( it == m_PlayerPostCheckData.end() )
+			if ( it == m_PlayerPostCheckData.end() )
 				break;
 		}
 	}

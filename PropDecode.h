@@ -47,14 +47,14 @@ static inline float Float_Decode( bf_read &reader, const SendProp *pSendProp )
 	unsigned long dwInterp;
 
 	// Check for special flags..
-	if( DecodeSpecialFloat( reader, pSendProp, fVal ) )
+	if ( DecodeSpecialFloat( reader, pSendProp, fVal ) )
 	{
 		return fVal;
 	}
 
 	dwInterp = reader.ReadUBitLong( pSendProp->m_nBits );
-	fVal = ( float )dwInterp / ( ( 1 << pSendProp->m_nBits ) - 1 );
-	fVal = pSendProp->m_fLowValue + (pSendProp->m_fHighValue - pSendProp->m_fLowValue) * fVal;
+	fVal = (float)dwInterp / ( ( 1 << pSendProp->m_nBits ) - 1 );
+	fVal = pSendProp->m_fLowValue + ( pSendProp->m_fHighValue - pSendProp->m_fLowValue ) * fVal;
 	return fVal;
 }
 
@@ -73,7 +73,7 @@ static inline void Vector_Decode( bf_read &reader, const SendProp *pSendProp, Ve
 		int signbit = reader.ReadOneBit();
 
 		float v0v0v1v1 = v.x * v.x + v.y * v.y;
-		if (v0v0v1v1 < 1.0f)
+		if ( v0v0v1v1 < 1.0f )
 		{
 			v.z = sqrtf( 1.0f - v0v0v1v1 );
 		}
@@ -82,7 +82,7 @@ static inline void Vector_Decode( bf_read &reader, const SendProp *pSendProp, Ve
 			v.z = 0.0f;
 		}
 
-		if (signbit)
+		if ( signbit )
 		{
 			v.z *= -1.0f;
 		}
@@ -99,7 +99,7 @@ static inline Prop_t *Array_Decode( bf_read &reader, FlattenedPropEntry *pFlatte
 {
 	int maxElements = nNumElements;
 	int numBits = 1;
-	while ( (maxElements >>= 1) != 0 )
+	while ( ( maxElements >>= 1 ) != 0 )
 	{
 		numBits++;
 	}
@@ -133,8 +133,8 @@ static inline const char *String_Decode( bf_read &reader, const SendProp *pSendP
 		len = DT_MAX_STRING_BUFFERSIZE - 1;
 	}
 
-	reader.ReadBits( tempStr, len*8 );
-	tempStr[len] = 0;
+	reader.ReadBits( tempStr, len * 8 );
+	tempStr[ len ] = 0;
 
 	return tempStr;
 }
